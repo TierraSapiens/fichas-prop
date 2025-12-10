@@ -1,3 +1,7 @@
+#--------------------------------
+# Generador_fichas_py V 1.1
+#-------------------------------
+
 import os
 import json
 import random
@@ -6,35 +10,34 @@ from datetime import datetime
 import subprocess
 
 # ---------------------------------------------------------
-# 1. Generar ID aleatorio seguro (20 caracteres)
+# 1. Generar ID aleatorio (20 caracteres)
 # ---------------------------------------------------------
 def generar_id_unico():
     caracteres = string.ascii_letters + string.digits
     largo = 20
 
-    # cargar IDs ya usados
     if os.path.exists("ids_generados.json"):
         with open("ids_generados.json", "r", encoding="utf-8") as f:
             usados = set(json.load(f))
     else:
         usados = set()
 
-    # generar hasta obtener uno nuevo
     while True:
         nuevo_id = ''.join(random.choice(caracteres) for _ in range(largo))
         if nuevo_id not in usados:
             usados.add(nuevo_id)
             break
 
-    # guardar IDs usados
+#-------------------
+# 2. Guardar IDs usados
+#-------------------
     with open("ids_generados.json", "w", encoding="utf-8") as f:
         json.dump(list(usados), f, indent=2)
 
     return nuevo_id
 
-
 # ---------------------------------------------------------
-# 2. Generar HTML de la ficha dentro de su carpeta única
+# 3. Generar HTML una ficha dentro de su carpeta única
 # ---------------------------------------------------------
 def crear_ficha():
     ficha_id = generar_id_unico()
@@ -66,10 +69,9 @@ https://tierrasapiens.github.io/fichas-prop/fichas/{ficha_id}/
 
     return ficha_id, carpeta_ficha
 
-
-# ---------------------------------------------------------
-# 3. Commit + push automático a GitHub
-# ---------------------------------------------------------
+# -------------------------------------
+# 4. Commit + push automático a GitHub
+# -------------------------------------
 def enviar_a_github(ruta_carpeta, ficha_id):
     try:
         subprocess.run(["git", "add", "."], check=True)
@@ -79,10 +81,9 @@ def enviar_a_github(ruta_carpeta, ficha_id):
     except Exception as e:
         print("Error al enviar a GitHub:", e)
 
-
-# ---------------------------------------------------------
-# 4. Ejecutar proceso completo
-# ---------------------------------------------------------
+# -------------------------------
+# 5. Ejecutar proceso completo
+# ------------------------------
 if __name__ == "__main__":
     ficha_id, carpeta = crear_ficha()
 
