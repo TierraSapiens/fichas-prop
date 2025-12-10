@@ -1,7 +1,7 @@
-# ---------------------------------------------
-# Generador de Fichas con Imagen Automática
+# ----------------------------------
+# Generador de Fichas con Imagen
 # Version 2.0
-# ---------------------------------------------
+# -----------------------------------
 
 import os
 import json
@@ -12,9 +12,9 @@ import subprocess
 import requests
 from bs4 import BeautifulSoup
 
-# ---------------------------------------------------------
+# ---------------------------------------
 # 1. Generar ID aleatorio (20 caracteres)
-# ---------------------------------------------------------
+# ----------------------------------------
 def generar_id_unico():
     caracteres = string.ascii_letters + string.digits
     largo = 20
@@ -36,9 +36,9 @@ def generar_id_unico():
 
     return nuevo_id
 
-# ---------------------------------------------------------
+# ---------------------------------------------
 # 2. Extraer la imagen principal desde ZonaProp
-# ---------------------------------------------------------
+# --------------------------------------------
 def obtener_imagen_zonaprop(url):
     """
     Devuelve la URL de la imagen principal del anuncio.
@@ -51,13 +51,12 @@ def obtener_imagen_zonaprop(url):
     r = requests.get(url, headers=headers)
     soup = BeautifulSoup(r.text, "html.parser")
 
-    # ZonaProp usa property="og:image" para la imagen principal
     og_img = soup.find("meta", property="og:image")
 
     if og_img and og_img.get("content"):
         return og_img["content"]
 
-    return None  # Si no encuentra imagen
+    return None
 
 # ---------------------------------------------------------
 # 3. Descargar imagen a la carpeta de la ficha
