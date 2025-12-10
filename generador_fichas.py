@@ -55,7 +55,7 @@ def crear_ficha():
 <p>ID único: <b>{ficha_id}</b></p>
 <p>Fecha/Hora de creación:<br> {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
 <p>URL pública:<br>
-https://tierrasapiens.github.io/fichas-prop/{ficha_id}/
+https://tierrasapiens.github.io/fichas-prop/fichas/{ficha_id}/
 </p>
 </body>
 </html>
@@ -90,6 +90,6 @@ if __name__ == "__main__":
     print(f"Carpeta: {carpeta}")
     print(f"ID: {ficha_id}")
     print(f"URL pública:")
-    print(f"https://tierrasapiens.github.io/fichas-prop/{ficha_id}/\n")
+    print(f"https://tierrasapiens.github.io/fichas-prop/fichas/{ficha_id}/\n")
 
     enviar_a_github(carpeta, ficha_id)
