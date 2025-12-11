@@ -1,24 +1,11 @@
-#-------------
-# Bot.py V 0.1
-#--------------
 import os
 import re
 import asyncio
 import logging
 
-# Mensajes personalizables
-MSG_INTRO = "¡Hola! 👋 Soy el bot de Ficha Prop MDQ. Envíame el link del aviso y te genero una ficha"
-MSG_NO_URL = (
-    "📎 Envíame el link del aviso de ZonaProp. Ejemplo:\n"
-    "https://www.zonaprop.com.ar/..."
-)
-MSG_GENERANDO = "✅ Generando la ficha, por favor espera unos segundos..."
-MSG_FICHA_PUBLIC = "🔗 Aquí tienes tu ficha:\n{public_url}"
-MSG_FICHA_SUG = "Encontré esta propiedad que te puede interesar:\n{public_url}"
-MSG_ERROR = "❌ Ocurrió un error generando la ficha. Reintentá en unos segundos."
-
 from aiogram import Bot, Dispatcher, types
 from aiogram.utils import executor
+
 from generador_fichas import crear_ficha
 
 logging.basicConfig(level=logging.INFO)
@@ -32,31 +19,13 @@ bot = Bot(token=TELEGRAM_TOKEN)
 dp = Dispatcher(bot)
 
 DOMINIOS_PERMITIDOS = [
-    # Zonaprop
-    "zonaprop.com",
-    "zonaprop.com.ar",
-    "www.zonaprop.com",
-    "www.zonaprop.com.ar",
-
-    # Argenprop
-    "argenprop.com",
-    "www.argenprop.com",
-
-    # Inmuebles Clarín
-    "inmuebles.clarin.com",
-    "www.inmuebles.clarin.com",
-
-    # Properati
-    "properati.com.ar",
-    "www.properati.com.ar",
-
-    # MercadoLibre inmuebles
-    "inmuebles.mercadolibre.com.ar",
-    "www.inmuebles.mercadolibre.com.ar",
-
-    # SoloDueños
-    "soloduenos.com",
-    "www.soloduenos.com"
+    "zonaprop.com", "zonaprop.com.ar",
+    "www.zonaprop.com", "www.zonaprop.com.ar",
+    "argenprop.com", "www.argenprop.com",
+    "inmuebles.clarin.com", "www.inmuebles.clarin.com",
+    "properati.com.ar", "www.properati.com.ar",
+    "inmuebles.mercadolibre.com.ar", "www.inmuebles.mercadolibre.com.ar",
+    "soloduenos.com", "www.soloduenos.com"
 ]
 
 def extraer_url(texto: str):
@@ -66,29 +35,11 @@ def extraer_url(texto: str):
             return u.rstrip('),.')
     return None
 
-@dp.message_handler()
-async def manejar_mensajes(message: types.Message):
-    text = message.text or ""
-    url = extraer_url(text)
-
-# Nombre del usuario para el saludo
-    nombre = message.from_user.first_name or ""
-
-# Si NO envió URL → enviar saludo + pedir link
-    if not url:
-        await message.reply(
-            f"Hola {nombre}\n"
-            "📎 Envíame el link del aviso de ZonaProp. Ejemplo:\n"
-            "https://www.zonaprop.com.ar/..."
-        )
-        return
 
 @dp.message_handler()
 async def manejar_mensajes(message: types.Message):
     text = message.text or ""
     url = extraer_url(text)
-
-    # Nombre del usuario
     nombre = message.from_user.first_name or ""
 
     # Si NO envía URL → saludo + instrucciones
@@ -99,23 +50,21 @@ async def manejar_mensajes(message: types.Message):
         )
         return
 
-    # Hay URL → generar ficha
+    # Si envía URL → generar ficha
     await message.reply("✅ Generando la ficha, por favor espere unos segundos...")
 
     try:
-        # Usar executor porque crear_ficha NO ES ASYNC
         loop = asyncio.get_event_loop()
         ficha_id, carpeta = await loop.run_in_executor(None, crear_ficha, url)
 
         public_url = f"https://tierrasapiens.github.io/fichas-prop/fichas/{ficha_id}/"
 
-        # Respuestas
         await message.reply(f"🔗 Aquí tienes tu ficha:\n{public_url}")
-        await message.reply(f"También te puede interesar esta otra:\n{public_url}")
 
     except Exception as e:
         logging.error(f"Error generando ficha: {e}")
         await message.reply("❌ Ocurrió un error generando la ficha. Reintentá en unos segundos.")
+
 
 if __name__ == "__main__":
     logging.info("Bot iniciado. Esperando mensajes...")
