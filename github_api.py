@@ -6,7 +6,7 @@ import base64
 import requests
 import os
 
-# Configuración de GitHub
+#Configuración de GitHub
 GITHUB_OWNER = "TierraSapiens"
 GITHUB_REPO = "fichas-prop"
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
@@ -24,7 +24,7 @@ def upload_file(path_repo, local_file_path, message):
     local_file_path: ruta local al archivo
     """
 
-# Leer archivo local
+#Leer el archivo local
     with open(local_file_path, "rb") as f:
         content = f.read()
 
@@ -37,7 +37,7 @@ def upload_file(path_repo, local_file_path, message):
         "Accept": "application/vnd.github+json",
     }
 
-# Revisar si ya existe el archivo en GitHub (para obtener SHA)
+#Revisar si ya existe el archivo en GitHub (para obtener SHA)
     resp = requests.get(url, headers=headers)
 
     if resp.status_code == 200:
@@ -62,7 +62,6 @@ def upload_file(path_repo, local_file_path, message):
         raise RuntimeError(
             f"Error subiendo archivo a GitHub: {put_resp.status_code}\n{put_resp.text}"
         )
-
 
 def subir_ficha_a_github(ficha_id, carpeta_local):
     """

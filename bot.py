@@ -32,7 +32,6 @@ DOMINIOS_PERMITIDOS = [
     "soloduenos.com", "www.soloduenos.com"
 ]
 
-
 def extraer_url(texto: str):
     urls = re.findall(r"https?://[^\s]+", texto)
     for u in urls:
@@ -40,14 +39,12 @@ def extraer_url(texto: str):
             return u.rstrip('),.')
     return None
 
-
 @dp.message_handler()
 async def manejar_mensajes(message: types.Message):
     text = message.text or ""
     url = extraer_url(text)
     nombre = message.from_user.first_name or ""
 
-    # Si no envía URL
     if not url:
         await message.reply(
             f"Hola {nombre}\n"
@@ -61,7 +58,7 @@ async def manejar_mensajes(message: types.Message):
         loop = asyncio.get_event_loop()
         ficha_id, carpeta = await loop.run_in_executor(None, crear_ficha, url)
 
-# ⬆️ Subir a GitHub automáticamente
+#Subir a GitHub automáticamente
         try:
             subir_ficha_a_github(ficha_id, carpeta)
         except Exception as e:
@@ -73,7 +70,6 @@ async def manejar_mensajes(message: types.Message):
     except Exception as e:
         logging.error(f"Error generando ficha: {e}")
         await message.reply("❌ Ocurrió un error generando la ficha. Reintentá en unos segundos.")
-
 
 if __name__ == "__main__":
     logging.info("Bot iniciado. Esperando mensajes...")

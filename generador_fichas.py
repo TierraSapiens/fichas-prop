@@ -1,6 +1,5 @@
 # ----------------------------------
-# Generador de Fichas con Imagen
-# Versión Limpia 2025
+# Generador de Fichas con Imagen V ¿? perdi la cuenta!
 # -----------------------------------
 
 import os
@@ -12,7 +11,7 @@ import requests
 from bs4 import BeautifulSoup
 
 # ---------------------------------------
-# 1. Generar ID aleatorio (20 caracteres)
+# 1- Generar ID aleatorio (20 caracteres)
 # ----------------------------------------
 def generar_id_unico():
     caracteres = string.ascii_letters + string.digits
@@ -36,10 +35,10 @@ def generar_id_unico():
     return nuevo_id
 
 
-# -----------------------------------------------------
-# 2. Extraer imagen principal usando OpenGraph
-#    Funciona con: Zonaprop, Argenprop, Clarín, Properati
-# -----------------------------------------------------
+# -------------------------------------------------------
+# 2- Extraer imagen principal usando OpenGraph
+# Funciona con: Zonaprop, Argenprop, Clarín, Properati....
+# -------------------------------------------------------
 def obtener_imagen_principal(url):
     """
     Devuelve la URL de la imagen principal desde OG:image.
@@ -56,9 +55,8 @@ def obtener_imagen_principal(url):
 
     return None
 
-
 # ---------------------------------------------------------
-# 3. Descargar imagen dentro de la carpeta de la ficha
+# 3-Descargar imagen dentro de la carpeta de la ficha
 # ---------------------------------------------------------
 def descargar_imagen(url_img, carpeta_ficha):
     try:
@@ -74,9 +72,8 @@ def descargar_imagen(url_img, carpeta_ficha):
     except Exception:
         return None
 
-
 # ---------------------------------------------------------
-# 4. Crear estructura HTML y carpeta de la ficha
+# 4- Crear estructura HTML y carpeta de la ficha
 # ---------------------------------------------------------
 def crear_ficha(url_propiedad):
     ficha_id = generar_id_unico()
@@ -84,7 +81,7 @@ def crear_ficha(url_propiedad):
     carpeta_ficha = os.path.join("fichas", ficha_id)
     os.makedirs(carpeta_ficha, exist_ok=True)
 
-    # Obtener imagen principal
+# Obtener una imagen principal (¡Con problemas!)
     imagen_url = obtener_imagen_principal(url_propiedad)
 
     if imagen_url:
