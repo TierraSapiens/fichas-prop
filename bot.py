@@ -6,6 +6,7 @@ import logging
 from aiogram import Bot, Dispatcher, types
 from aiogram.utils import executor
 
+from github_api import subir_ficha_a_github
 from generador_fichas import crear_ficha
 
 logging.basicConfig(level=logging.INFO)
@@ -28,6 +29,7 @@ DOMINIOS_PERMITIDOS = [
     "soloduenos.com", "www.soloduenos.com"
 ]
 
+
 def extraer_url(texto: str):
     urls = re.findall(r"https?://[^\s]+", texto)
     for u in urls:
@@ -42,7 +44,7 @@ async def manejar_mensajes(message: types.Message):
     url = extraer_url(text)
     nombre = message.from_user.first_name or ""
 
-    # Si NO envía URL → saludo + instrucciones
+    # Si no envía URL
     if not url:
         await message.reply(
             f"Hola {nombre}\n"
@@ -50,15 +52,19 @@ async def manejar_mensajes(message: types.Message):
         )
         return
 
-    # Si envía URL → generar ficha
     await message.reply("✅ Generando la ficha, por favor espere unos segundos...")
 
     try:
         loop = asyncio.get_event_loop()
         ficha_id, carpeta = await loop.run_in_executor(None, crear_ficha, url)
 
-        public_url = f"https://tierrasapiens.github.io/fichas-prop/fichas/{ficha_id}/"
+        # ⬆️ Subir a GitHub automáticamente
+        try:
+            subir_ficha_a_github(ficha_id, carpeta)
+        except Exception as e:
+            logging.error(f"Error subiendo a GitHub: {e}")
 
+        public_url = f"https://tierrasapiens.github.io/fichas-prop/fichas/{ficha_id}/"
         await message.reply(f"🔗 Aquí tienes tu ficha:\n{public_url}")
 
     except Exception as e:
