@@ -83,30 +83,39 @@ async def manejar_mensajes(message: types.Message):
         )
         return
 
-# SÍ hay URL → generar la ficha
+@dp.message_handler()
+async def manejar_mensajes(message: types.Message):
+    text = message.text or ""
+    url = extraer_url(text)
+
+    # Nombre del usuario
+    nombre = message.from_user.first_name or ""
+
+    # Si NO envía URL → saludo + instrucciones
+    if not url:
+        await message.reply(
+            f"Hola {nombre}\n"
+            "📎 Envíame el link del aviso de la propiedad:"
+        )
+        return
+
+    # Hay URL → generar ficha
     await message.reply("✅ Generando la ficha, por favor espere unos segundos...")
 
     try:
-        public_url = await crear_ficha(url)
+        # Usar executor porque crear_ficha NO ES ASYNC
+        loop = asyncio.get_event_loop()
+        ficha_id, carpeta = await loop.run_in_executor(None, crear_ficha, url)
+
+        public_url = f"https://tierrasapiens.github.io/fichas-prop/fichas/{ficha_id}/"
+
+        # Respuestas
         await message.reply(f"🔗 Aquí tienes tu ficha:\n{public_url}")
         await message.reply(f"También te puede interesar esta otra:\n{public_url}")
 
     except Exception as e:
         logging.error(f"Error generando ficha: {e}")
         await message.reply("❌ Ocurrió un error generando la ficha. Reintentá en unos segundos.")
-
-    try:
-        loop = asyncio.get_event_loop()
-        ficha_id, carpeta = await loop.run_in_executor(None, crear_ficha, url)
-
-        public_url = f"https://tierrasapiens.github.io/fichas-prop/fichas/{ficha_id}/"
-
-        await message.reply(MSG_FICHA_PUBLIC.format(public_url=public_url))
-        await message.reply(MSG_FICHA_SUG.format(public_url=public_url))
-
-    except Exception as e:
-        print("Error al generar ficha:", e)
-        await message.reply(MSG_ERROR)
 
 if __name__ == "__main__":
     logging.info("Bot iniciado. Esperando mensajes...")
