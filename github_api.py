@@ -62,33 +62,29 @@ def upload_file(path_repo, local_file_path, message):
         raise RuntimeError(
             f"Error subiendo archivo a GitHub: {put_resp.status_code}\n{put_resp.text}"
         )
-
 def subir_ficha_a_github(ficha_id, carpeta_local):
     """
     Sube la carpeta generada de una ficha:
     fichas/<ID>/index.html
-    fichas/<ID>/foto.jpg
+    fichas/<ID>/foto.jpg (Si existe)
     """
-
+    
     # 1. Subir el archivo HTML
     repo_path_html = f"fichas/{ficha_id}/index.html"
-    local_path_html = f"{carpeta_local}/index.html"
+    local_path_html = os.path.join(carpeta_local, "index.html")
     mensaje_html = f"Agregar ficha {ficha_id} (HTML)"
-
+    
     upload_file(repo_path_html, local_path_html, mensaje_html)
 
-    # 2. Subir el archivo de IMAGEN (¡Nuevo!)
+    # 2. Subir el archivo de IMAGEN (¡CLAVE!)
     repo_path_img = f"fichas/{ficha_id}/foto.jpg"
-    local_path_img = f"{carpeta_local}/foto.jpg"
-    mensaje_img = f"Agregar imagen para ficha {ficha_id}"
-
-    # Antes de llamar a upload_file, verifica si la imagen existe
+    local_path_img = os.path.join(carpeta_local, "foto.jpg")
+    
     if os.path.exists(local_path_img):
+        mensaje_img = f"Agregar imagen para ficha {ficha_id}"
         upload_file(repo_path_img, local_path_img, mensaje_img)
     else:
-        # Esto es importante si el scraping de imagen falla y usa default.jpg
+        # Esto ocurre si obtener_imagen_principal() no logró descargarla
         print(f"Advertencia: No se encontró la imagen local en {local_path_img}. Solo se subió el HTML.")
-        # No hay que subir la imagen si no se descargó
 
-    # Retorna un valor si es necesario, aunque la función principal no lo usa
     return True
