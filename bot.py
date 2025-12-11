@@ -1,3 +1,6 @@
+#---------------------
+# Bot.py V 1.2
+#--------------------
 import os
 import re
 import asyncio
@@ -58,7 +61,7 @@ async def manejar_mensajes(message: types.Message):
         loop = asyncio.get_event_loop()
         ficha_id, carpeta = await loop.run_in_executor(None, crear_ficha, url)
 
-        # ⬆️ Subir a GitHub automáticamente
+# ⬆️ Subir a GitHub automáticamente
         try:
             subir_ficha_a_github(ficha_id, carpeta)
         except Exception as e:

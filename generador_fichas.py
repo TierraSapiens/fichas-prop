@@ -82,7 +82,6 @@ def crear_ficha(url_propiedad):
     carpeta_ficha = os.path.join("fichas", ficha_id)
     os.makedirs(carpeta_ficha, exist_ok=True)
 
-    # Obtener imagen desde ZonaProp
     imagen_url = obtener_imagen_zonaprop(url_propiedad)
 
     if imagen_url:
