@@ -1,6 +1,6 @@
 # ----------------------------------
 # Generador de Fichas con Imagen
-# Version 2.0
+# Versión Limpia 2025
 # -----------------------------------
 
 import os
@@ -8,7 +8,6 @@ import json
 import random
 import string
 from datetime import datetime
-import subprocess
 import requests
 from bs4 import BeautifulSoup
 
@@ -36,45 +35,48 @@ def generar_id_unico():
 
     return nuevo_id
 
-# ---------------------------------------------
-# 2. Extraer la imagen principal desde ZonaProp
-# --------------------------------------------
-def obtener_imagen_zonaprop(url):
+
+# -----------------------------------------------------
+# 2. Extraer imagen principal usando OpenGraph
+#    Funciona con: Zonaprop, Argenprop, Clarín, Properati
+# -----------------------------------------------------
+def obtener_imagen_principal(url):
     """
-    Devuelve la URL de la imagen principal del anuncio.
+    Devuelve la URL de la imagen principal desde OG:image.
+    Esto funciona en casi todos los portales inmobiliarios.
     """
 
-    headers = {
-        "User-Agent": "Mozilla/5.0"
-    }
-
+    headers = {"User-Agent": "Mozilla/5.0"}
     r = requests.get(url, headers=headers)
     soup = BeautifulSoup(r.text, "html.parser")
 
     og_img = soup.find("meta", property="og:image")
-
     if og_img and og_img.get("content"):
         return og_img["content"]
 
     return None
 
+
 # ---------------------------------------------------------
-# 3. Descargar imagen a la carpeta de la ficha
+# 3. Descargar imagen dentro de la carpeta de la ficha
 # ---------------------------------------------------------
 def descargar_imagen(url_img, carpeta_ficha):
     try:
-        img_data = requests.get(url_img).content
-        ruta = os.path.join(carpeta_ficha, "foto.jpg")
+        response = requests.get(url_img, timeout=10)
+        response.raise_for_status()
 
+        ruta = os.path.join(carpeta_ficha, "foto.jpg")
         with open(ruta, "wb") as f:
-            f.write(img_data)
+            f.write(response.content)
 
         return "foto.jpg"
-    except:
+
+    except Exception:
         return None
 
+
 # ---------------------------------------------------------
-# 4. Generar HTML dentro de la carpeta
+# 4. Crear estructura HTML y carpeta de la ficha
 # ---------------------------------------------------------
 def crear_ficha(url_propiedad):
     ficha_id = generar_id_unico()
@@ -82,11 +84,15 @@ def crear_ficha(url_propiedad):
     carpeta_ficha = os.path.join("fichas", ficha_id)
     os.makedirs(carpeta_ficha, exist_ok=True)
 
-    imagen_url = obtener_imagen_zonaprop(url_propiedad)
+    # Obtener imagen principal
+    imagen_url = obtener_imagen_principal(url_propiedad)
 
     if imagen_url:
         nombre_imagen = descargar_imagen(imagen_url, carpeta_ficha)
-        url_publica_img = f"https://tierrasapiens.github.io/fichas-prop/fichas/{ficha_id}/{nombre_imagen}"
+        if nombre_imagen:
+            url_publica_img = f"https://tierrasapiens.github.io/fichas-prop/fichas/{ficha_id}/{nombre_imagen}"
+        else:
+            url_publica_img = "https://tierrasapiens.github.io/fichas-prop/default.jpg"
     else:
         url_publica_img = "https://tierrasapiens.github.io/fichas-prop/default.jpg"
 
@@ -141,6 +147,7 @@ h1 {{
     <p><b>Fecha de creación:</b> {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
     <p><b>Enlace original:</b><br><a href="{url_propiedad}">{url_propiedad}</a></p>
     <br><br>
+
 <!-- BOTÓN DE CONTACTO POR TELEGRAM -->
 <div style="margin-top: 25px; text-align: center;">
     <a href="https://t.me/Enrique_Mdq" target="_blank" 
@@ -172,15 +179,3 @@ h1 {{
         f.write(html)
 
     return ficha_id, carpeta_ficha
-
-# -------------------------------------
-# 5. Commit + push automático a GitHub
-# -------------------------------------
-def enviar_a_github(carpeta, ficha_id):
-    try:
-        subprocess.run(["git", "add", "."], check=True)
-        subprocess.run(["git", "commit", "-m", f"Agregar ficha {ficha_id}"], check=True)
-        subprocess.run(["git", "push"], check=True)
-        print("Cambios enviados a GitHub correctamente.")
-    except Exception as e:
-        print("Error al enviar a GitHub:", e)
