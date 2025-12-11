@@ -141,6 +141,28 @@ h1 {{
     <p><b>ID único:</b> {ficha_id}</p>
     <p><b>Fecha de creación:</b> {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
     <p><b>Enlace original:</b><br><a href="{url_propiedad}">{url_propiedad}</a></p>
+    <br><br>
+<!-- BOTÓN DE CONTACTO POR TELEGRAM -->
+<div style="margin-top: 25px; text-align: center;">
+    <a href="https://t.me/Enrique_Mdq" target="_blank" 
+       style="
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: #0088cc;
+            color: white;
+            padding: 14px 22px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-size: 18px;
+            font-weight: bold;
+       ">
+        <img src="https://cdn-icons-png.flaticon.com/512/2111/2111646.png" 
+             width="26" height="26">
+        Contactar por Telegram
+    </a>
+</div>
+
 </div>
 
 </body>
