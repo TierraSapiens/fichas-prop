@@ -53,7 +53,7 @@ def upload_file(path_repo, local_file_path, message):
     if sha:
         data["sha"] = sha
 
-# Subir archivo
+#Subir archivo
     put_resp = requests.put(url, headers=headers, json=data)
 
     if put_resp.status_code in (200, 201):
