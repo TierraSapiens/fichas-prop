@@ -31,19 +31,45 @@ if not TELEGRAM_TOKEN:
 bot = Bot(token=TELEGRAM_TOKEN)
 dp = Dispatcher(bot)
 
-ZONAPROP_DOMAINS = ["zonaprop.com", "zonaprop.com.ar", "www.zonaprop.com.ar", "www.zonaprop.com"]
+DOMINIOS_PERMITIDOS = [
+    # Zonaprop
+    "zonaprop.com",
+    "zonaprop.com.ar",
+    "www.zonaprop.com",
+    "www.zonaprop.com.ar",
 
-def extraer_url_zonaprop(texto: str):
+    # Argenprop
+    "argenprop.com",
+    "www.argenprop.com",
+
+    # Inmuebles Clarín
+    "inmuebles.clarin.com",
+    "www.inmuebles.clarin.com",
+
+    # Properati
+    "properati.com.ar",
+    "www.properati.com.ar",
+
+    # MercadoLibre inmuebles
+    "inmuebles.mercadolibre.com.ar",
+    "www.inmuebles.mercadolibre.com.ar",
+
+    # SoloDueños
+    "soloduenos.com",
+    "www.soloduenos.com"
+]
+
+def extraer_url(texto: str):
     urls = re.findall(r"https?://[^\s]+", texto)
     for u in urls:
-        if any(domain in u.lower() for domain in ZONAPROP_DOMAINS):
+        if any(domain in u.lower() for domain in DOMINIOS_PERMITIDOS):
             return u.rstrip('),.')
     return None
 
 @dp.message_handler()
 async def manejar_mensajes(message: types.Message):
     text = message.text or ""
-    url = extraer_url_zonaprop(text)
+    url = extraer_url(text)
 
 # Nombre del usuario para el saludo
     nombre = message.from_user.first_name or ""
