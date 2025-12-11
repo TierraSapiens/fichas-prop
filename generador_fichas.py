@@ -95,84 +95,25 @@ def crear_ficha(url_propiedad):
 
     ruta_html = os.path.join(carpeta_ficha, "index.html")
 
-    html = f"""
-<html>
-<head>
-<meta charset="utf-8">
-<title>Propiedad — {ficha_id}</title>
+# INICIO NUEVO BLOQUE DE CÓDIGO (Reemplaza el antiguo bloque HTML aquí)
+    try:
+        with open("ficha_template.html", "r", encoding="utf-8") as f:
+            html_template = f.read()
+    except FileNotFoundError:
+        raise FileNotFoundError("Error: No se encontró ficha_template.html en el directorio raíz.")
 
-<!-- Open Graph -->
-<meta property="og:title" content="Encontré esta propiedad que te puede interesar">
-<meta property="og:description" content="Haz clic para ver los detalles de la propiedad.">
-<meta property="og:image" content="{url_publica_img}">
-<meta property="og:url" content="https://tierrasapiens.github.io/fichas-prop/fichas/{ficha_id}/">
-<meta property="og:type" content="article">
+    reemplazos = {
+        "{{ FICHA_ID }}": ficha_id,
+        "{{ IMAGEN_URL }}": url_publica_img,
+        "{{ FECHA_CREACION }}": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "{{ URL_ORIGINAL }}": url_propiedad,
+    }
 
-<style>
-body {{
-    font-family: Arial, sans-serif;
-    background: #f4f4f4;
-    margin: 0;
-    padding: 20px;
-}}
-.contenedor {{
-    max-width: 800px;
-    margin: auto;
-    background: #fff;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}}
-.imagen {{
-    width: 100%;
-    border-radius: 10px;
-    margin-bottom: 15px;
-}}
-h1 {{
-    font-size: 26px;
-    margin-bottom: 10px;
-}}
-</style>
-
-</head>
-<body>
-
-<div class="contenedor">
-    <img src="{url_publica_img}" class="imagen">
-    <h1>Ficha de Propiedad</h1>
-    <p><b>ID único:</b> {ficha_id}</p>
-    <p><b>Fecha de creación:</b> {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
-    <p><b>Enlace original:</b><br><a href="{url_propiedad}">{url_propiedad}</a></p>
-    <br><br>
-
-<!-- BOTÓN DE CONTACTO POR TELEGRAM -->
-<div style="margin-top: 25px; text-align: center;">
-    <a href="https://t.me/Enrique_Mdq" target="_blank" 
-       style="
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            background: #0088cc;
-            color: white;
-            padding: 14px 22px;
-            border-radius: 10px;
-            text-decoration: none;
-            font-size: 18px;
-            font-weight: bold;
-       ">
-        <img src="https://cdn-icons-png.flaticon.com/512/2111/2111646.png" 
-             width="26" height="26">
-        Contactar por Telegram
-    </a>
-</div>
-
-</div>
-
-</body>
-</html>
-"""
+    html_final = html_template
+    for placeholder, valor in reemplazos.items():
+        html_final = html_final.replace(placeholder, valor)
 
     with open(ruta_html, "w", encoding="utf-8") as f:
-        f.write(html)
-
+        f.write(html_final)
+    
     return ficha_id, carpeta_ficha
