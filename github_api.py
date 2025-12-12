@@ -24,7 +24,6 @@ def upload_file(path_repo, local_file_path, message):
     local_file_path: ruta local al archivo
     """
 
-#Leer el archivo local
     with open(local_file_path, "rb") as f:
         content = f.read()
 
@@ -53,7 +52,6 @@ def upload_file(path_repo, local_file_path, message):
     if sha:
         data["sha"] = sha
 
-#Subir archivo
     put_resp = requests.put(url, headers=headers, json=data)
 
     if put_resp.status_code in (200, 201):
@@ -68,15 +66,12 @@ def subir_ficha_a_github(ficha_id, carpeta_local):
     fichas/<ID>/index.html
     fichas/<ID>/foto.jpg (Si existe)
     """
-    
-    # 1. Subir el archivo HTML
     repo_path_html = f"fichas/{ficha_id}/index.html"
     local_path_html = os.path.join(carpeta_local, "index.html")
     mensaje_html = f"Agregar ficha {ficha_id} (HTML)"
     
     upload_file(repo_path_html, local_path_html, mensaje_html)
 
-    # 2. Subir el archivo de IMAGEN (¡CLAVE!)
     repo_path_img = f"fichas/{ficha_id}/foto.jpg"
     local_path_img = os.path.join(carpeta_local, "foto.jpg")
     
@@ -84,7 +79,6 @@ def subir_ficha_a_github(ficha_id, carpeta_local):
         mensaje_img = f"Agregar imagen para ficha {ficha_id}"
         upload_file(repo_path_img, local_path_img, mensaje_img)
     else:
-        # Esto ocurre si obtener_imagen_principal() no logró descargarla
         print(f"Advertencia: No se encontró la imagen local en {local_path_img}. Solo se subió el HTML.")
 
     return True
