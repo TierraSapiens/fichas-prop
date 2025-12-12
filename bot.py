@@ -64,7 +64,7 @@ async def manejar_mensajes(message: types.Message):
         except Exception as e:
             logging.error(f"Error subiendo a GitHub: {e}")
 
-        await asyncio.sleep(5) #Esperar unos segundos para la propagación de GitHub Pages
+        await asyncio.sleep(10) #Esperar unos segundos para la propagación de GitHub Pages
 
         public_url = f"https://tierrasapiens.github.io/fichas-prop/fichas/{ficha_id}/"
         await message.reply(f"🔗 Aquí tienes tu ficha:\n{public_url}")
