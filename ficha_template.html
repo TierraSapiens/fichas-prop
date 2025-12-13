@@ -14,16 +14,6 @@
 
   <meta name="viewport" content="width=device-width,initial-scale=1">
 
-<script>
-function setAgencia() {
-    const nombre = prompt("Escribí el nombre de la Agencia:");
-    if (nombre && nombre.trim() !== "") {
-        document.querySelectorAll(".brand").forEach(e => e.textContent = nombre);
-        document.querySelectorAll(".marca-ficha").forEach(e => e.textContent = nombre);
-    }
-}
-</script>
-
 <style>
 /* ---------- Topbar ---------- */
     .topbar {
@@ -208,7 +198,7 @@ function setAgencia() {
 
   <!-- Botón de contacto -->
     <div class="contact-wrap">
-      <a class="btn-contact" href="https://t.me/Enrique_Mdq" target="_blank">
+      <a class="btn-contact" href="{{ TELEGRAM_URL }}" target="_blank">
         <img src="https://cdn-icons-png.flaticon.com/512/2111/2111646.png" width="22" alt="">
         Contactar por Telegram
       </a>

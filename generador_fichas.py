@@ -14,6 +14,18 @@ import requests
 from bs4 import BeautifulSoup
 
 # ------------------------------------------------------------
+# Configuración global
+# ------------------------------------------------------------
+def cargar_config():
+    try:
+        with open("config.json", "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {
+            "agencia": "Ficha Prop"
+        }
+
+# ------------------------------------------------------------
 # Leer configuración general (agencia, título, etc.)
 # ------------------------------------------------------------
 def leer_config():
@@ -162,6 +174,9 @@ def descargar_imagen(url_img, carpeta_ficha, pagina_base=None, timeout=8):
 # 4. Crear ficha (HTML + imagen = 0 Exito.!!)
 # ------------------------------------------------------------
 def crear_ficha(url_propiedad):
+    config = cargar_config()
+    agencia = config.get("agencia", "Ficha Prop")
+    telegram = config.get("telegram", "#")
 
 # Leer configuración
     config = leer_config()
@@ -198,9 +213,13 @@ def crear_ficha(url_propiedad):
     "{{ IMAGEN_URL }}": imagen_publica,
     "{{ TITULO }}": titulo,
     "{{ PRECIO }}": precio,
+    "{{ PRECIO_SUB }}": "Consultar",
     "{{ DESCRIPCION }}": descripcion,
+    "{{ UBICACION }}": "Ubicación no especificada",
+    "{{ DETALLES }}": "Información adicional no disponible.",
     "{{ FECHA }}": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-    "{{ AGENCIA }}": agencia
+    "{{ AGENCIA }}": agencia,
+    "{{ TELEGRAM_URL }}": telegram
 }
 
     html_final = html_template

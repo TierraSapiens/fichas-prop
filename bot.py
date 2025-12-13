@@ -190,7 +190,7 @@ async def handle_all_messages(message: types.Message):
                 logger.exception("Error subiendo a GitHub")
 
 # Esperar un poco para que GitHub Pages regenere
-            await asyncio.sleep(10)      #<<<< Elejir tiempo espera.!!
+            await asyncio.sleep(15)      #<<<< Elejir tiempo espera.!!
             public_url = f"https://tierrasapiens.github.io/fichas-prop/fichas/{ficha_id}/"
             await message.reply(f"🔗 Aquí tienes tu ficha:\n{public_url}")
         except Exception as e:
