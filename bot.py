@@ -134,9 +134,7 @@ async def cmd_generar(message: types.Message):
         ficha_id, carpeta = await loop.run_in_executor(
     None,
     crear_ficha,
-    url,
-    telegram_url,
-    config.get("agencia")
+    url
 )
 
 # Subir a GitHub (intenta, pero no bloquea al usuario si falla)
@@ -201,9 +199,7 @@ async def handle_all_messages(message: types.Message):
             ficha_id, carpeta = await loop.run_in_executor(
     None,
     crear_ficha,
-    url,
-    telegram_url,
-    config.get("agencia")
+    url
 )
 
 # Subir a GitHub automáticamente
