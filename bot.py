@@ -126,15 +126,23 @@ async def cmd_generar(message: types.Message):
     if not args:
         await message.reply("Usar:\n/generar https://... (URL del aviso)")
         return
+    user = message.from_user
+    if user.username:
+        telegram_url = f"https://t.me/{user.username}"
+    else:
+        telegram_url = f"https://t.me/user?id={user.id}"
 
     url = args.split()[0]
+    
     await message.reply("✅ Generando ficha, esto puede tardar unos segundos...")
     loop = asyncio.get_event_loop()
     try:
         ficha_id, carpeta = await loop.run_in_executor(
     None,
     crear_ficha,
-    url
+    url,
+    telegram_url,
+    config.get("agencia")
 )
 
 # Subir a GitHub (intenta, pero no bloquea al usuario si falla)
@@ -199,7 +207,9 @@ async def handle_all_messages(message: types.Message):
             ficha_id, carpeta = await loop.run_in_executor(
     None,
     crear_ficha,
-    url
+    url,
+    telegram_url,
+    config.get("agencia")
 )
 
 # Subir a GitHub automáticamente

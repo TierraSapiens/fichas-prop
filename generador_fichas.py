@@ -158,7 +158,6 @@ def crear_ficha(url_propiedad, telegram_url, agencia):
     titulo, descripcion, precio, imagen_url = extraer_datos_opengraph(url_propiedad)
 
 # Imagen pública
-    # Imagen pública
     if imagen_url:
         nombre_img = descargar_imagen(imagen_url, carpeta, pagina_base=url_propiedad)
         if nombre_img:
