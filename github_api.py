@@ -1,21 +1,22 @@
 #----------------------
-# Github_api.py V 0.3
-#---------------------
+# Github_api.py V 0.4
+#----------------------
 
 import base64
 import requests
 import os
 
-#Configuración de GitHub
+# Configuración de GitHub
 GITHUB_OWNER = "TierraSapiens"
 GITHUB_REPO = "fichas-prop"
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-
-if not GITHUB_TOKEN:
-    raise RuntimeError("❌ Falta la variable de entorno GITHUB_TOKEN")
 
 API_URL = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents"
 
+def get_github_token():
+    token = os.getenv("GITHUB_TOKEN")
+    if not token:
+        raise RuntimeError("❌ Falta la variable de entorno GITHUB_TOKEN")
+    return token
 
 def upload_file(path_repo, local_file_path, message):
     """
@@ -31,12 +32,14 @@ def upload_file(path_repo, local_file_path, message):
 
     url = f"{API_URL}/{path_repo}"
 
+    token = get_github_token()
+
     headers = {
-        "Authorization": f"Bearer {GITHUB_TOKEN}",
+        "Authorization": f"Bearer {token}",
         "Accept": "application/vnd.github+json",
     }
 
-#Revisar si ya existe el archivo en GitHub (para obtener SHA)
+    # Revisar si ya existe el archivo en GitHub (para obtener SHA)
     resp = requests.get(url, headers=headers)
 
     if resp.status_code == 200:
@@ -60,6 +63,7 @@ def upload_file(path_repo, local_file_path, message):
         raise RuntimeError(
             f"Error subiendo archivo a GitHub: {put_resp.status_code}\n{put_resp.text}"
         )
+
 def subir_ficha_a_github(ficha_id, carpeta_local):
     """
     Sube la carpeta generada de una ficha:
