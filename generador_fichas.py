@@ -14,6 +14,18 @@ import requests
 from bs4 import BeautifulSoup
 
 # ------------------------------------------------------------
+# Leer configuración general (agencia, título, etc.)
+# ------------------------------------------------------------
+def leer_config():
+    try:
+        with open("config.json", "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {
+            "agencia": "Ficha Prop"
+        }
+
+# ------------------------------------------------------------
 # 1. Generar ID único
 # ------------------------------------------------------------
 def generar_id_unico():
@@ -48,15 +60,15 @@ def extraer_datos_opengraph(url):
         r.raise_for_status()
         soup = BeautifulSoup(r.text, "html.parser")
     except Exception:
-# Si falla la petición, devolvemos valores por defecto
-        return "Propiedad en venta / alquiler", "Sin descripción disponible.", "Consultar", None
+        return "", "", "", None
 
     def og(prop):
         tag = soup.find("meta", property=f"og:{prop}")
         return tag.get("content").strip() if tag and tag.get("content") else None
 
-    titulo = og("title") or "Propiedad en venta / alquiler"
-    descripcion = og("description") or "Sin descripción disponible."
+    titulo = og("title") or ""
+    descripcion = og("description") or ""
+
     imagen = og("image")
 
 # -------------------------------------------
@@ -151,6 +163,10 @@ def descargar_imagen(url_img, carpeta_ficha, pagina_base=None, timeout=8):
 # ------------------------------------------------------------
 def crear_ficha(url_propiedad):
 
+# Leer configuración
+    config = leer_config()
+    agencia = config.get("agencia", "Ficha Prop")
+
     ficha_id = generar_id_unico()
     carpeta = os.path.join("fichas", ficha_id)
     os.makedirs(carpeta, exist_ok=True)
@@ -178,13 +194,14 @@ def crear_ficha(url_propiedad):
 
 # Reemplazar valores (Ojo: La plantilla debe usar estas Valores-llaves)
     reemplazos = {
-        "{{ FICHA_ID }}": ficha_id,
-        "{{ IMAGEN_URL }}": imagen_publica,
-        "{{ TITULO }}": titulo,
-        "{{ PRECIO }}": precio,
-        "{{ DESCRIPCION }}": descripcion,
-        "{{ FECHA }}": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    }
+    "{{ FICHA_ID }}": ficha_id,
+    "{{ IMAGEN_URL }}": imagen_publica,
+    "{{ TITULO }}": titulo,
+    "{{ PRECIO }}": precio,
+    "{{ DESCRIPCION }}": descripcion,
+    "{{ FECHA }}": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    "{{ AGENCIA }}": agencia
+}
 
     html_final = html_template
     for k, v in reemplazos.items():
