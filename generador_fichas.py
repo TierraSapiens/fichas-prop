@@ -149,14 +149,7 @@ def descargar_imagen(url_img, carpeta_ficha, pagina_base=None, timeout=8):
 # ------------------------------------------------------------
 # 4. Crear ficha (HTML + imagen = 0 Exito.!!)
 # ------------------------------------------------------------
-def crear_ficha(url_propiedad, telegram_url):
-        # Leer configuración global (solo AGENCIA)
-    try:
-        with open("config.json", "r", encoding="utf-8") as f:
-            cfg = json.load(f)
-            agencia = cfg.get("agencia", "Ficha Prop")
-    except Exception:
-        agencia = "Ficha Prop"
+def crear_ficha(url_propiedad, telegram_url, agencia):
     ficha_id = generar_id_unico()
     carpeta = os.path.join("fichas", ficha_id)
     os.makedirs(carpeta, exist_ok=True)
@@ -165,13 +158,13 @@ def crear_ficha(url_propiedad, telegram_url):
     titulo, descripcion, precio, imagen_url = extraer_datos_opengraph(url_propiedad)
 
 # Imagen pública
+    # Imagen pública
     if imagen_url:
-        if imagen_url:
-            nombre_img = descargar_imagen(imagen_url, carpeta, pagina_base=url_propiedad)
-            if nombre_img:
-                imagen_publica = f"https://tierrasapiens.github.io/fichas-prop/fichas/{ficha_id}/{nombre_img}"
-            else:
-                imagen_publica = "https://tierrasapiens.github.io/fichas-prop/default.jpg"
+        nombre_img = descargar_imagen(imagen_url, carpeta, pagina_base=url_propiedad)
+        if nombre_img:
+            imagen_publica = f"https://tierrasapiens.github.io/fichas-prop/fichas/{ficha_id}/{nombre_img}"
+        else:
+            imagen_publica = "https://tierrasapiens.github.io/fichas-prop/default.jpg"
     else:
         imagen_publica = "https://tierrasapiens.github.io/fichas-prop/default.jpg"
 
@@ -215,9 +208,10 @@ if __name__ == "__main__":
     url = input("Pegá la URL de la propiedad: ").strip()
     ficha_id, carpeta = crear_ficha(
     url,
-    "https://t.me/PRUEBA_USUARIO"
+    "https://t.me/PRUEBA_USUARIO",
+    "AGENCIA PRUEBA"
 )
-    
+
     print("\n--- FICHA GENERADA ---")
     print("ID:", ficha_id)
     print("Carpeta:", carpeta)
