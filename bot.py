@@ -1,5 +1,5 @@
 #-------------------------
-# bot.py V 1.4 - Bot Telegram (aiogram) con OWNER control para setear AGENCIA y TITULO
+# bot.py V 1.4 - Telegram + comandos
 #-------------------------
 
 import os
