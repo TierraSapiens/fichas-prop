@@ -131,7 +131,13 @@ async def cmd_generar(message: types.Message):
     await message.reply("✅ Generando ficha, esto puede tardar unos segundos...")
     loop = asyncio.get_event_loop()
     try:
-        ficha_id, carpeta = await loop.run_in_executor(None, crear_ficha, url)
+        ficha_id, carpeta = await loop.run_in_executor(
+    None,
+    crear_ficha,
+    url,
+    telegram_url,
+    config.get("agencia")
+)
 
 # Subir a GitHub (intenta, pero no bloquea al usuario si falla)
         try:
@@ -148,6 +154,17 @@ async def cmd_generar(message: types.Message):
 @dp.message_handler()
 async def handle_all_messages(message: types.Message):
     chat_id = message.chat.id
+# ---------- Datos del usuario (Telegram) ----------
+    user = message.from_user
+    username = user.username          # puede ser None
+    user_id = user.id
+    nombre = user.first_name or "Usuario"
+
+    if username:
+        telegram_url = f"https://t.me/{username}"
+    else:
+        telegram_url = f"https://t.me/user?id={user_id}"
+
 
 # 1) Si el owner está en modo pendiente, guardamos la entrada
     if chat_id in pending_action and es_owner(message.from_user):
@@ -181,7 +198,13 @@ async def handle_all_messages(message: types.Message):
         await message.reply("✅ Generando la ficha, por favor espere unos segundos...")
         loop = asyncio.get_event_loop()
         try:
-            ficha_id, carpeta = await loop.run_in_executor(None, crear_ficha, url)
+            ficha_id, carpeta = await loop.run_in_executor(
+    None,
+    crear_ficha,
+    url,
+    telegram_url,
+    config.get("agencia")
+)
 
 # Subir a GitHub automáticamente
             try:

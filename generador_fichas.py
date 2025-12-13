@@ -14,30 +14,6 @@ import requests
 from bs4 import BeautifulSoup
 
 # ------------------------------------------------------------
-# Configuración global
-# ------------------------------------------------------------
-def cargar_config():
-    try:
-        with open("config.json", "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {
-            "agencia": "Ficha Prop"
-        }
-
-# ------------------------------------------------------------
-# Leer configuración general (agencia, título, etc.)
-# ------------------------------------------------------------
-def leer_config():
-    try:
-        with open("config.json", "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {
-            "agencia": "Ficha Prop"
-        }
-
-# ------------------------------------------------------------
 # 1. Generar ID único
 # ------------------------------------------------------------
 def generar_id_unico():
@@ -173,15 +149,14 @@ def descargar_imagen(url_img, carpeta_ficha, pagina_base=None, timeout=8):
 # ------------------------------------------------------------
 # 4. Crear ficha (HTML + imagen = 0 Exito.!!)
 # ------------------------------------------------------------
-def crear_ficha(url_propiedad):
-    config = cargar_config()
-    agencia = config.get("agencia", "Ficha Prop")
-    telegram = config.get("telegram", "#")
-
-# Leer configuración
-    config = leer_config()
-    agencia = config.get("agencia", "Ficha Prop")
-
+def crear_ficha(url_propiedad, telegram_url):
+        # Leer configuración global (solo AGENCIA)
+    try:
+        with open("config.json", "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+            agencia = cfg.get("agencia", "Ficha Prop")
+    except Exception:
+        agencia = "Ficha Prop"
     ficha_id = generar_id_unico()
     carpeta = os.path.join("fichas", ficha_id)
     os.makedirs(carpeta, exist_ok=True)
@@ -219,7 +194,7 @@ def crear_ficha(url_propiedad):
     "{{ DETALLES }}": "Información adicional no disponible.",
     "{{ FECHA }}": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     "{{ AGENCIA }}": agencia,
-    "{{ TELEGRAM_URL }}": telegram
+    "{{ TELEGRAM_URL }}": telegram_url
 }
 
     html_final = html_template
@@ -238,8 +213,11 @@ def crear_ficha(url_propiedad):
 # ------------------------------------------------------------
 if __name__ == "__main__":
     url = input("Pegá la URL de la propiedad: ").strip()
-    ficha_id, carpeta = crear_ficha(url)
-
+    ficha_id, carpeta = crear_ficha(
+    url,
+    "https://t.me/PRUEBA_USUARIO"
+)
+    
     print("\n--- FICHA GENERADA ---")
     print("ID:", ficha_id)
     print("Carpeta:", carpeta)
