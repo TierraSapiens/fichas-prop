@@ -1,6 +1,6 @@
-# bot.py - Bot Telegram (aiogram) con OWNER control para setear AGENCIA y TITULO
-# Requiere: aiogram, generador_fichas.py (crear_ficha) y github_api.py (subir_ficha_a_github)
-# Variables de entorno: TELEGRAM_TOKEN, OWNER_ID
+#-------------------------
+# bot.py V 1.4 - Bot Telegram (aiogram) con OWNER control para setear AGENCIA y TITULO
+#-------------------------
 
 import os
 import json
@@ -10,21 +10,18 @@ import re
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.utils import executor
-
-# Importá tu generador y la función que sube a GitHub (o adapta si tus nombres difieren)
 from generador_fichas import crear_ficha
 from github_api import subir_ficha_a_github
 
-# ---------- Config ----------
+# ---------- Configuracio ----------
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 if not TELEGRAM_TOKEN:
     raise RuntimeError("Falta la variable de entorno TELEGRAM_TOKEN")
 
-# OWNER_ID debe ser el Telegram user id del único usuario autorizado (número entero)
-# Recomiendo ponerlo en Railway como variable OWNER_ID
-OWNER_ID = int(os.getenv("OWNER_ID", "0"))  # reemplazar con tu ID si no usás env
+# OWNER_ID Telegram user id del único usuario autorizado (número entero)
+OWNER_ID = int(os.getenv("OWNER_ID", "0"))
 
-# Archivo para guardar la configuración editable (agencia, titulo, footer, etc.)
+# Archivo donde se guarda la configuración editable (PANEL SUPERIOR IZQ)
 CONFIG_FILE = "config.json"
 
 # Logging
@@ -46,7 +43,8 @@ def load_config():
                 return json.load(f)
         except Exception:
             logger.exception("Error leyendo config.json, se recreará")
-    # valores por defecto
+
+# valores por defecto (talvez cambien a futuro)
     cfg = {
         "agencia": "Administración y Gestión Inmobiliaria",
         "titulo": "Ficha de Propiedad",
@@ -72,7 +70,7 @@ def es_owner(user: types.User) -> bool:
 def reply_not_authorized(message: types.Message):
     return message.reply("❌ No tenés permiso para usar este comando.")
 
-# ---------- Comandos de administración ----------
+# ---------- Comandos de ADMinistración ----------
 @dp.message_handler(commands=["start", "help"])
 async def cmd_start(message: types.Message):
     if es_owner(message.from_user):
@@ -115,11 +113,12 @@ async def cmd_settitulo(message: types.Message):
     await message.reply("📝 Escribí ahora el *TÍTULO* que querés mostrar en las fichas (envialo en un solo mensaje).", parse_mode="Markdown")
     pending_action[message.chat.id] = "titulo"
 
-# Opcional: comando rápido para generar ficha desde Telegram (útil para pruebas)
+# Comando Rápido para generar ficha desde Telegram (EN PRUEBA¿?)
 @dp.message_handler(commands=["generar"])
 async def cmd_generar(message: types.Message):
     if not es_owner(message.from_user):
-        # permití que cualquier usuario pida generar ficha si ya tenés ese flujo, o podés restringir
+
+#Permite que cualquier usuario pida generar ficha si ya tienés ese flujo, o podérlo restringir
         await message.reply("Solo el owner puede usar /generar en este modo. Envíame un enlace para generar desde el bot principal.")
         return
 
@@ -133,7 +132,8 @@ async def cmd_generar(message: types.Message):
     loop = asyncio.get_event_loop()
     try:
         ficha_id, carpeta = await loop.run_in_executor(None, crear_ficha, url)
-        # Subir a GitHub (intenta, pero no bloquea al usuario si falla)
+
+# Subir a GitHub (intenta, pero no bloquea al usuario si falla)
         try:
             subir_ficha_a_github(ficha_id, carpeta)
         except Exception as e:
@@ -149,7 +149,7 @@ async def cmd_generar(message: types.Message):
 async def handle_all_messages(message: types.Message):
     chat_id = message.chat.id
 
-    # 1) Si el owner está en modo pendiente, guardamos la entrada
+# 1) Si el owner está en modo pendiente, guardamos la entrada
     if chat_id in pending_action and es_owner(message.from_user):
         action = pending_action.pop(chat_id)
         text = message.text.strip()
@@ -167,13 +167,14 @@ async def handle_all_messages(message: types.Message):
             await message.reply(f"✔️ Título actualizado a:\n*{text}*", parse_mode="Markdown")
             return
 
-    # 2) Si no estaba en modo pendiente --> tratá de extraer URL y procesar la ficha (tu flujo original)
+# 2) Si no estaba en modo pendiente --> tratá de extraer URL y procesar la ficha (tu flujo original)
     texto = message.text or ""
-    # simple extracción de URLs (igual a la versión anterior)
+    
+# simple extracción de URLs (igual a la versión anterior)
     urls = re.findall(r"https?://[^\s]+", texto)
     url = None
     if urls:
-        # toma la primera url que coincida con dominios permitidos si querés filtrar
+# toma la primera url que coincida con dominios permitidos si querés filtrar
         url = urls[0]
 
     if url:
@@ -181,14 +182,15 @@ async def handle_all_messages(message: types.Message):
         loop = asyncio.get_event_loop()
         try:
             ficha_id, carpeta = await loop.run_in_executor(None, crear_ficha, url)
-            # Subir a GitHub automáticamente
+
+# Subir a GitHub automáticamente
             try:
                 subir_ficha_a_github(ficha_id, carpeta)
             except Exception as e:
                 logger.exception("Error subiendo a GitHub")
 
-            # Esperar un poco para que GitHub Pages regenere
-            await asyncio.sleep(4)
+# Esperar un poco para que GitHub Pages regenere
+            await asyncio.sleep(10)      #<<<< Elejir tiempo espera.!!
             public_url = f"https://tierrasapiens.github.io/fichas-prop/fichas/{ficha_id}/"
             await message.reply(f"🔗 Aquí tienes tu ficha:\n{public_url}")
         except Exception as e:
@@ -196,7 +198,7 @@ async def handle_all_messages(message: types.Message):
             await message.reply("❌ Ocurrió un error generando la ficha. Reintentá en unos segundos.")
         return
 
-    # 3) Mensaje por defecto si no es URL ni modo pendiente
+# 3) Mensaje por defecto si no es URL ni modo pendiente
     if es_owner(message.from_user):
         await message.reply("⚠️ No entendí. Usá /setagencia o /settitulo para cambiar valores, o envíame el enlace de la propiedad.")
     else:
@@ -210,7 +212,8 @@ async def on_shutdown(dp):
     logger.info("Bot apagándose...")
 
 if __name__ == "__main__":
-    # Si querés, podés forzar OWNER_ID desde un archivo local (opcional)
+    
+# Se puede forzar OWNER_ID desde un archivo local (opcional)
     if OWNER_ID == 0:
         logger.warning("OWNER_ID no configurado. Solo el owner podrá usar comandos si se establece OWNER_ID en las env vars.")
     executor.start_polling(dp, skip_updates=True, on_startup=on_startup, on_shutdown=on_shutdown)
