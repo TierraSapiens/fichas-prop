@@ -13,12 +13,11 @@ from aiogram.utils import executor
 from generador_fichas import crear_ficha
 from github_api import subir_ficha_a_github
 
-# ---------- Configuracio ----------
+# Configuracio
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 if not TELEGRAM_TOKEN:
     raise RuntimeError("Falta la variable de entorno TELEGRAM_TOKEN")
 
-# OWNER_ID Telegram user id del único usuario autorizado (número entero)
 OWNER_ID = int(os.getenv("OWNER_ID", "0"))
 
 # Archivo donde se guarda la configuración editable (PANEL SUPERIOR IZQ)
@@ -28,14 +27,14 @@ CONFIG_FILE = "config.json"
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# ---------- Bot y dispatcher ----------
+# Bot y dispatcher
 bot = Bot(token=TELEGRAM_TOKEN)
 dp = Dispatcher(bot)
 
 # estados simples en memoria: {chat_id: "agencia" | "titulo"}
 pending_action = {}
 
-# ---------- Helpers de config ----------
+# Helpers de config
 def load_config():
     if os.path.exists(CONFIG_FILE):
         try:
@@ -60,7 +59,6 @@ def save_config(cfg: dict):
 # Cargar config al inicio
 config = load_config()
 
-# ---------- Utilitarios ----------
 def es_owner(user: types.User) -> bool:
     try:
         return int(user.id) == int(OWNER_ID)
@@ -70,7 +68,7 @@ def es_owner(user: types.User) -> bool:
 def reply_not_authorized(message: types.Message):
     return message.reply("❌ No tenés permiso para usar este comando.")
 
-# ---------- Comandos de ADMinistración ----------
+# Comandos de ADMinistración
 @dp.message_handler(commands=["start", "help"])
 async def cmd_start(message: types.Message):
     if es_owner(message.from_user):
@@ -156,11 +154,11 @@ async def cmd_generar(message: types.Message):
         logger.exception("Error generando ficha")
         await message.reply("❌ Error generando la ficha. Revisá logs.")
 
-# ---------- Handler para mensajes cuando estamos "esperando" entrada del owner ----------
+# Handler para mensajes cuando estamos "esperando" entrada del owner
 @dp.message_handler()
 async def handle_all_messages(message: types.Message):
     chat_id = message.chat.id
-# ---------- Datos del usuario (Telegram) ----------
+# Datos del usuario (Telegram)
     user = message.from_user
     username = user.username          # puede ser None
     user_id = user.id
@@ -171,8 +169,6 @@ async def handle_all_messages(message: types.Message):
     else:
         telegram_url = f"https://t.me/user?id={user_id}"
 
-
-# 1) Si el owner está en modo pendiente, guardamos la entrada
     if chat_id in pending_action and es_owner(message.from_user):
         action = pending_action.pop(chat_id)
         text = message.text.strip()
@@ -190,16 +186,12 @@ async def handle_all_messages(message: types.Message):
             await message.reply(f"✔️ Título actualizado a:\n*{text}*", parse_mode="Markdown")
             return
 
-# 2) Si no estaba en modo pendiente --> tratá de extraer URL y procesar la ficha (tu flujo original)
     texto = message.text or ""
     
-# simple extracción de URLs (igual a la versión anterior)
     urls = re.findall(r"https?://[^\s]+", texto)
     url = None
     if urls:
-# toma la primera url que coincida con dominios permitidos si querés filtrar
         url = urls[0]
-
     if url:
         await message.reply("✅ Generando la ficha, por favor espere unos segundos...")
         loop = asyncio.get_event_loop()
@@ -227,13 +219,13 @@ async def handle_all_messages(message: types.Message):
             await message.reply("❌ Ocurrió un error generando la ficha. Reintentá en unos segundos.")
         return
 
-# 3) Mensaje por defecto si no es URL ni modo pendiente
+# Mensaje por defecto si no es URL ni modo pendiente
     if es_owner(message.from_user):
         await message.reply("⚠️ No entendí. Usá /setagencia o /settitulo para cambiar valores, o envíame el enlace de la propiedad.")
     else:
         await message.reply("👋 Envíame el enlace completo de una ficha (debe contener un aviso inmobiliario).")
 
-# ---------- Startup / Shutdown ----------
+# Startup / Shutdown
 async def on_startup(dp):
     logger.info("Bot iniciado (aiogram). Owner ID = %s", OWNER_ID)
 

@@ -6,7 +6,9 @@ import base64
 import requests
 import os
 
+#-------------------------
 # Configuración de GitHub
+#-------------------------
 GITHUB_OWNER = "TierraSapiens"
 GITHUB_REPO = "fichas-prop"
 
@@ -39,7 +41,7 @@ def upload_file(path_repo, local_file_path, message):
         "Accept": "application/vnd.github+json",
     }
 
-    # Revisar si ya existe el archivo en GitHub (para obtener SHA)
+# Revisar si ya existe el archivo en GitHub (para obtener SHA)
     resp = requests.get(url, headers=headers)
 
     if resp.status_code == 200:
