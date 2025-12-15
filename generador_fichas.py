@@ -1,5 +1,5 @@
 # ------------------------------------------------------------
-# generador_fichas.py V 1.2 —VERSIÓN CORREGIDA (import re + fixes)
+# generador_fichas.py V 1.3.txt —VERSIÓN CORREGIDA in Selenium ¿?
 # ------------------------------------------------------------
 
 import os
@@ -157,55 +157,36 @@ def crear_ficha(url_propiedad, telegram_url, agencia):
     carpeta = os.path.join("fichas", ficha_id)
     os.makedirs(carpeta, exist_ok=True)
 
-    tipo = detectar_scraper(url_propiedad)
+    # -----------------------------
+    # Extraer datos usando solo OpenGraph
+    # -----------------------------
+    titulo, descripcion, precio, imagen_url = extraer_datos_opengraph(url_propiedad)
+    ubicacion = "Ubicación no especificada"
 
     # -----------------------------
-    # Extraer datos según scraper
-    # -----------------------------
-    if tipo == "zonaprop":
-        print("Usando scraper Zonaprop")
-        data = scrapear_zonaprop(url_propiedad)
-
-        print("DEBUG PRECIO:", data.get("precio"))
-
-
-        titulo = data.get("titulo", "")
-        descripcion = data.get("descripcion", "")
-        precio = data.get("precio", "Consultar")
-        ubicacion = data.get("ubicacion", "Ubicación no especificada")
-        imagen_url = data["imagenes"][0] if data.get("imagenes") else None
-
-    else:
-        print("Usando fallback OpenGraph")
-        titulo, descripcion, precio, imagen_url = extraer_datos_opengraph(url_propiedad)
-        ubicacion = "Ubicación no especificada"
-
-    # ----------------
     # Imagen pública
-    # ----------------
+    # -----------------------------
     if imagen_url:
         nombre_img = descargar_imagen(imagen_url, carpeta, pagina_base=url_propiedad)
         if nombre_img:
-            imagen_publica = (
-                f"https://tierrasapiens.github.io/fichas-prop/fichas/{ficha_id}/{nombre_img}"
-            )
+            imagen_publica = f"https://tierrasapiens.github.io/fichas-prop/fichas/{ficha_id}/{nombre_img}"
         else:
             imagen_publica = "https://tierrasapiens.github.io/fichas-prop/default.jpg"
     else:
         imagen_publica = "https://tierrasapiens.github.io/fichas-prop/default.jpg"
 
-    # ----------------
-    # Leer template
-    # ----------------
+    # -----------------------------
+    # Leer template HTML
+    # -----------------------------
     try:
         with open("ficha_template.html", "r", encoding="utf-8") as f:
             html_template = f.read()
     except FileNotFoundError:
         raise FileNotFoundError("ERROR: Falta ficha_template.html en la carpeta raíz.")
 
-    # ----------------
-    # Reemplazos
-    # ----------------
+    # -----------------------------
+    # Reemplazar valores en template
+    # -----------------------------
     reemplazos = {
         "{{ FICHA_ID }}": ficha_id,
         "{{ IMAGEN_URL }}": imagen_publica,
@@ -224,9 +205,9 @@ def crear_ficha(url_propiedad, telegram_url, agencia):
     for k, v in reemplazos.items():
         html_final = html_final.replace(k, v)
 
-    # ----------------
+    # -----------------------------
     # Guardar HTML
-    # ----------------
+    # -----------------------------
     ruta_html = os.path.join(carpeta, "index.html")
     with open(ruta_html, "w", encoding="utf-8") as f:
         f.write(html_final)
