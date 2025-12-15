@@ -12,6 +12,19 @@ import time
 from datetime import datetime
 import requests
 from bs4 import BeautifulSoup
+from scrapers.scrapear_zonaprop import scrapear_zonaprop
+
+def detectar_scraper(url):
+    url = url.lower()
+
+    if "zonaprop.com.ar" in url:
+        return "zonaprop"
+
+    # futuros:
+    # if "argenprop.com" in url:
+    #     return "argenprop"
+
+    return None
 
 # -------------------
 # 1. Generar ID único
@@ -137,59 +150,88 @@ def descargar_imagen(url_img, carpeta_ficha, pagina_base=None, timeout=8):
     return None
 
 # -------------------------------------------
-# 4. Crear ficha (HTML + imagen = 0 Exito.!!)
+# 4. Crear ficha
 # -------------------------------------------
 def crear_ficha(url_propiedad, telegram_url, agencia):
     ficha_id = generar_id_unico()
     carpeta = os.path.join("fichas", ficha_id)
     os.makedirs(carpeta, exist_ok=True)
 
-#Extraer datos OpenGraph
-    titulo, descripcion, precio, imagen_url = extraer_datos_opengraph(url_propiedad)
+    tipo = detectar_scraper(url_propiedad)
 
-#Imagen pública
+    # -----------------------------
+    # Extraer datos según scraper
+    # -----------------------------
+    if tipo == "zonaprop":
+        print("Usando scraper Zonaprop")
+        data = scrapear_zonaprop(url_propiedad)
+
+        print("DEBUG PRECIO:", data.get("precio"))
+
+
+        titulo = data.get("titulo", "")
+        descripcion = data.get("descripcion", "")
+        precio = data.get("precio", "Consultar")
+        ubicacion = data.get("ubicacion", "Ubicación no especificada")
+        imagen_url = data["imagenes"][0] if data.get("imagenes") else None
+
+    else:
+        print("Usando fallback OpenGraph")
+        titulo, descripcion, precio, imagen_url = extraer_datos_opengraph(url_propiedad)
+        ubicacion = "Ubicación no especificada"
+
+    # ----------------
+    # Imagen pública
+    # ----------------
     if imagen_url:
         nombre_img = descargar_imagen(imagen_url, carpeta, pagina_base=url_propiedad)
         if nombre_img:
-            imagen_publica = f"https://tierrasapiens.github.io/fichas-prop/fichas/{ficha_id}/{nombre_img}"
+            imagen_publica = (
+                f"https://tierrasapiens.github.io/fichas-prop/fichas/{ficha_id}/{nombre_img}"
+            )
         else:
             imagen_publica = "https://tierrasapiens.github.io/fichas-prop/default.jpg"
     else:
         imagen_publica = "https://tierrasapiens.github.io/fichas-prop/default.jpg"
 
-#Leer template
+    # ----------------
+    # Leer template
+    # ----------------
     try:
         with open("ficha_template.html", "r", encoding="utf-8") as f:
             html_template = f.read()
     except FileNotFoundError:
         raise FileNotFoundError("ERROR: Falta ficha_template.html en la carpeta raíz.")
 
-# Reemplazar valores
+    # ----------------
+    # Reemplazos
+    # ----------------
     reemplazos = {
-    "{{ FICHA_ID }}": ficha_id,
-    "{{ IMAGEN_URL }}": imagen_publica,
-    "{{ TITULO }}": titulo,
-    "{{ PRECIO }}": precio,
-    "{{ PRECIO_SUB }}": "Consultar",
-    "{{ DESCRIPCION }}": descripcion,
-    "{{ UBICACION }}": "Ubicación no especificada",
-    "{{ DETALLES }}": "Información adicional no disponible.",
-    "{{ FECHA }}": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-    "{{ AGENCIA }}": agencia,
-    "{{ TELEGRAM_URL }}": telegram_url
-}
+        "{{ FICHA_ID }}": ficha_id,
+        "{{ IMAGEN_URL }}": imagen_publica,
+        "{{ TITULO }}": titulo,
+        "{{ PRECIO }}": precio,
+        "{{ PRECIO_SUB }}": "Consultar",
+        "{{ DESCRIPCION }}": descripcion,
+        "{{ UBICACION }}": ubicacion,
+        "{{ DETALLES }}": "Información adicional no disponible.",
+        "{{ FECHA }}": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "{{ AGENCIA }}": agencia,
+        "{{ TELEGRAM_URL }}": telegram_url
+    }
 
     html_final = html_template
     for k, v in reemplazos.items():
         html_final = html_final.replace(k, v)
 
-# Guardar HTML
+    # ----------------
+    # Guardar HTML
+    # ----------------
     ruta_html = os.path.join(carpeta, "index.html")
     with open(ruta_html, "w", encoding="utf-8") as f:
         f.write(html_final)
 
     return ficha_id, carpeta
-
 # --------------------------
 # MODO MANUAL (para pruebas)
 # --------------------------
