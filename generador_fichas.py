@@ -12,7 +12,7 @@ import time
 from datetime import datetime
 import requests
 from bs4 import BeautifulSoup
-from scrapers.scrapear_zonaprop import scrapear_zonaprop
+# from scrapers.scrapear_zonaprop import scrapear_zonaprop
 
 def detectar_scraper(url):
     url = url.lower()
