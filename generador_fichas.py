@@ -1,5 +1,5 @@
 # ------------------------------------------------------------
-# generador_fichas.py V 1.3.txt —VERSIÓN CORREGIDA in Selenium ¿?
+# generador_fichas.py V 1.3.txt —VERSION CORREGIDA Sin Selenium ¿?Playwright
 # ------------------------------------------------------------
 
 import os
@@ -12,7 +12,7 @@ import time
 from datetime import datetime
 import requests
 from bs4 import BeautifulSoup
-# from scrapers.scrapear_zonaprop import scrapear_zonaprop
+from scrapers.scrapear_zonaprop import scrapear_zonaprop
 
 def detectar_scraper(url):
     url = url.lower()
@@ -135,6 +135,7 @@ def descargar_imagen(url_img, carpeta_ficha, pagina_base=None, timeout=8):
                 r = requests.get(url_img, headers=headers, timeout=timeout)
                 r.raise_for_status()
                 ext = os.path.splitext(urllib.parse.urlparse(url_img).path)[1].lower()
+                os.makedirs(carpeta_ficha, exist_ok=True)
                 if ext not in (".jpg", ".jpeg", ".png", ".webp", ".gif"):
                     ext = ".jpg"
                 nombre = "foto" + ext
@@ -153,61 +154,108 @@ def descargar_imagen(url_img, carpeta_ficha, pagina_base=None, timeout=8):
 # 4. Crear ficha
 # -------------------------------------------
 def crear_ficha(url_propiedad, telegram_url, agencia):
+    # 1. Preparar carpetas
     ficha_id = generar_id_unico()
     carpeta = os.path.join("fichas", ficha_id)
     os.makedirs(carpeta, exist_ok=True)
 
-    # -----------------------------
-    # Extraer datos usando solo OpenGraph
-    # -----------------------------
-    titulo, descripcion, precio, imagen_url = extraer_datos_opengraph(url_propiedad)
+    print(f"--- Generando Ficha ID: {ficha_id} ---")
+
+    # Inicializamos variables por defecto
+    titulo = "Sin título"
+    descripcion = "Sin descripción"
+    precio = "Consultar"
     ubicacion = "Ubicación no especificada"
+    detalles = "Información adicional no disponible."
+    imagenes_candidatas = []
 
     # -----------------------------
-    # Imagen pública
+    # 2. ELEGIR SCRAPER (Zonaprop vs Genérico)
     # -----------------------------
-    if imagen_url:
-        nombre_img = descargar_imagen(imagen_url, carpeta, pagina_base=url_propiedad)
-        if nombre_img:
-            imagen_publica = f"https://tierrasapiens.github.io/fichas-prop/fichas/{ficha_id}/{nombre_img}"
-        else:
-            imagen_publica = "https://tierrasapiens.github.io/fichas-prop/default.jpg"
+    tipo_scraper = detectar_scraper(url_propiedad)
+
+    if tipo_scraper == "zonaprop":
+        print(">>> Usando Scraper POTENTE (Playwright) para Zonaprop...")
+        try:
+            # Llamamos a tu nuevo script scrapear_zonaprop.py
+            datos = scrapear_zonaprop(url_propiedad)
+            
+            titulo = datos.get("titulo", "")
+            precio = datos.get("precio", "Consultar")
+            ubicacion = datos.get("ubicacion", "")
+            descripcion = datos.get("descripcion", "")
+            imagenes_candidatas = datos.get("imagenes", [])
+            
+            # Formateamos las características (ambientes, m2) para ponerlas en el HTML
+            caracteristicas = datos.get("caracteristicas", {})
+            if caracteristicas:
+                lista_detalles = [f"{k}: {v}" for k, v in caracteristicas.items()]
+                detalles = " | ".join(lista_detalles)
+
+        except Exception as e:
+            print(f"Error al usar Playwright: {e}. Intentando método antiguo...")
+            # Si falla Playwright, no rompemos todo, intentamos OpenGraph abajo
+            tipo_scraper = None 
+
+    # -----------------------------
+    # 3. FALLBACK (Si no es Zonaprop o falló el anterior)
+    # -----------------------------
+    if tipo_scraper != "zonaprop":
+        print(">>> Usando método BÁSICO (OpenGraph)...")
+        t_og, d_og, p_og, img_og = extraer_datos_opengraph(url_propiedad)
+        if t_og: titulo = t_og
+        if d_og: descripcion = d_og
+        if p_og != "Consultar": precio = p_og
+        if img_og: imagenes_candidatas.append(img_og)
+
+    # -----------------------------
+    # 4. PROCESAR IMAGEN (Descargar la primera que sirva)
+    # -----------------------------
+    nombre_img_final = None
+    
+    # Intentamos descargar las imágenes de la lista hasta que una funcione
+    for img_url in imagenes_candidatas:
+        print(f"Intentando descargar: {img_url[:50]}...")
+        nombre = descargar_imagen(img_url, carpeta, pagina_base=url_propiedad)
+        if nombre:
+            nombre_img_final = nombre
+            break # Ya tenemos una foto, salimos del bucle
+    
+    if nombre_img_final:
+        imagen_publica = f"https://tierrasapiens.github.io/fichas-prop/fichas/{ficha_id}/{nombre_img_final}"
     else:
         imagen_publica = "https://tierrasapiens.github.io/fichas-prop/default.jpg"
 
     # -----------------------------
-    # Leer template HTML
+    # 5. GENERAR HTML
     # -----------------------------
     try:
         with open("ficha_template.html", "r", encoding="utf-8") as f:
             html_template = f.read()
     except FileNotFoundError:
-        raise FileNotFoundError("ERROR: Falta ficha_template.html en la carpeta raíz.")
+        print("ERROR: No se encontró ficha_template.html")
+        return None, None
 
-    # -----------------------------
-    # Reemplazar valores en template
-    # -----------------------------
     reemplazos = {
         "{{ FICHA_ID }}": ficha_id,
         "{{ IMAGEN_URL }}": imagen_publica,
         "{{ TITULO }}": titulo,
         "{{ PRECIO }}": precio,
-        "{{ PRECIO_SUB }}": "Consultar",
+        "{{ PRECIO_SUB }}": "Precio sujeto a cambios", 
         "{{ DESCRIPCION }}": descripcion,
         "{{ UBICACION }}": ubicacion,
-        "{{ DETALLES }}": "Información adicional no disponible.",
-        "{{ FECHA }}": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "{{ DETALLES }}": detalles, # Ahora sí mostrará m2 y ambientes
+        "{{ FECHA }}": datetime.now().strftime("%d/%m/%Y"),
         "{{ AGENCIA }}": agencia,
         "{{ TELEGRAM_URL }}": telegram_url
     }
 
     html_final = html_template
     for k, v in reemplazos.items():
-        html_final = html_final.replace(k, v)
+        # Usamos replace con seguridad por si algún valor es None
+        valor = str(v) if v is not None else ""
+        html_final = html_final.replace(k, valor)
 
-    # -----------------------------
-    # Guardar HTML
-    # -----------------------------
     ruta_html = os.path.join(carpeta, "index.html")
     with open(ruta_html, "w", encoding="utf-8") as f:
         f.write(html_final)
