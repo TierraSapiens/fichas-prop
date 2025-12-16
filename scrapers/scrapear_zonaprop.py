@@ -19,8 +19,14 @@ def scrapear_zonaprop(url):
 
     try:
         with sync_playwright() as p:
-            # Lanzamos el navegador (Chromium) en modo headless (sin ventana)
-            browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
+            # Usar argumentos recomendados para entornos de servidor (Railway/Linux)
+            browser = p.chromium.launch(
+                headless=True,
+                args=[
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox"
+              ]
+             )
             
             # Creamos un contexto simulando ser un navegador real para evitar bloqueos simples
             context = browser.new_context(
