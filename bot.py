@@ -133,15 +133,22 @@ async def cmd_generar(message: types.Message):
     url = args.split()[0]
     
     await message.reply("✅ Generando ficha, esto puede tardar unos segundos...")
-    loop = asyncio.get_event_loop()
-    try:
-        ficha_id, carpeta = await loop.run_in_executor(
-    None,
-    crear_ficha,
-    url,
-    telegram_url,
-    config.get("agencia")
+
+logger.info(
+    "ENTRO A GENERAR FICHA /generar | user_id=%s | url=%s",
+    message.from_user.id,
+    url
 )
+
+loop = asyncio.get_event_loop()
+try:
+    ficha_id, carpeta = await loop.run_in_executor(
+        None,
+        crear_ficha,
+        url,
+        telegram_url,
+        config.get("agencia")
+    )
 
 # Subir a GitHub (intenta, pero no bloquea al usuario si falla)
         try:
