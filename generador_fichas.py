@@ -13,6 +13,8 @@ from datetime import datetime
 import requests
 from bs4 import BeautifulSoup
 from scrapers.scrapear_zonaprop import scrapear_zonaprop
+import logging
+logger = logging.getLogger(__name__)
 
 def detectar_scraper(url):
     url = url.lower()
@@ -154,12 +156,18 @@ def descargar_imagen(url_img, carpeta_ficha, pagina_base=None, timeout=8):
 # 4. Crear ficha
 # -------------------------------------------
 def crear_ficha(url_propiedad, telegram_url, agencia):
+    logger.info("ENTRO A crear_ficha | url=%s", url_propiedad)
+
     # 1. Preparar carpetas
     ficha_id = generar_id_unico()
     carpeta = os.path.join("fichas", ficha_id)
     os.makedirs(carpeta, exist_ok=True)
 
-    print(f"--- Generando Ficha ID: {ficha_id} ---")
+    logger.info(
+        "--- Generando Ficha ID: %s | agencia=%s ---",
+        ficha_id,
+        agencia
+    )
 
     # Inicializamos variables por defecto
     titulo = "Sin título"
@@ -169,71 +177,66 @@ def crear_ficha(url_propiedad, telegram_url, agencia):
     detalles = "Información adicional no disponible."
     imagenes_candidatas = []
 
-    # -----------------------------
-    # 2. ELEGIR SCRAPER (Zonaprop vs Genérico)
-    # -----------------------------
+    # 2. ELEGIR SCRAPER
     tipo_scraper = detectar_scraper(url_propiedad)
+    logger.info("Scraper detectado: %s", tipo_scraper)
 
     if tipo_scraper == "zonaprop":
-        print(">>> Usando Scraper POTENTE (Playwright) para Zonaprop...")
+        logger.info("Usando scraper Zonaprop (Playwright)")
         try:
-            # Llamamos a tu nuevo script scrapear_zonaprop.py
             datos = scrapear_zonaprop(url_propiedad)
-            
+
             titulo = datos.get("titulo", "")
             precio = datos.get("precio", "Consultar")
             ubicacion = datos.get("ubicacion", "")
             descripcion = datos.get("descripcion", "")
             imagenes_candidatas = datos.get("imagenes", [])
-            
-            # Formateamos las características (ambientes, m2) para ponerlas en el HTML
+
             caracteristicas = datos.get("caracteristicas", {})
             if caracteristicas:
-                lista_detalles = [f"{k}: {v}" for k, v in caracteristicas.items()]
-                detalles = " | ".join(lista_detalles)
+                detalles = " | ".join(
+                    f"{k}: {v}" for k, v in caracteristicas.items()
+                )
 
-        except Exception as e:
-            print(f"Error al usar Playwright: {e}. Intentando método antiguo...")
-            # Si falla Playwright, no rompemos todo, intentamos OpenGraph abajo
-            tipo_scraper = None 
+        except Exception:
+            logger.exception(
+                "ERROR usando Playwright para Zonaprop, fallback a OpenGraph"
+            )
+            tipo_scraper = None
 
-    # -----------------------------
-    # 3. FALLBACK (Si no es Zonaprop o falló el anterior)
-    # -----------------------------
+    # 3. FALLBACK
     if tipo_scraper != "zonaprop":
-        print(">>> Usando método BÁSICO (OpenGraph)...")
+        logger.info("Usando método OpenGraph (fallback)")
         t_og, d_og, p_og, img_og = extraer_datos_opengraph(url_propiedad)
         if t_og: titulo = t_og
         if d_og: descripcion = d_og
         if p_og != "Consultar": precio = p_og
         if img_og: imagenes_candidatas.append(img_og)
 
-    # -----------------------------
-    # 4. PROCESAR IMAGEN (Descargar la primera que sirva)
-    # -----------------------------
+    # 4. PROCESAR IMAGEN
     nombre_img_final = None
-    
-    # Intentamos descargar las imágenes de la lista hasta que una funcione
     for img_url in imagenes_candidatas:
-        print(f"Intentando descargar: {img_url[:50]}...")
+        logger.info("Intentando descargar imagen: %s", img_url)
         nombre = descargar_imagen(img_url, carpeta, pagina_base=url_propiedad)
         if nombre:
             nombre_img_final = nombre
-            break # Ya tenemos una foto, salimos del bucle
-    
+            break
+
     if nombre_img_final:
-        imagen_publica = f"https://tierrasapiens.github.io/fichas-prop/fichas/{ficha_id}/{nombre_img_final}"
+        imagen_publica = (
+            f"https://tierrasapiens.github.io/fichas-prop/"
+            f"fichas/{ficha_id}/{nombre_img_final}"
+        )
     else:
+        logger.warning("No se pudo descargar imagen, usando default")
         imagen_publica = "https://tierrasapiens.github.io/fichas-prop/default.jpg"
 
-    # -----------------------------
     # 5. GENERAR HTML
-    # -----------------------------
     try:
         with open("ficha_template.html", "r", encoding="utf-8") as f:
             html_template = f.read()
     except FileNotFoundError:
-        print("ERROR: No se encontró ficha_template.html")
+        logger.error("No se encontró ficha_template.html")
         return None, None
 
     reemplazos = {
@@ -241,10 +244,10 @@ def crear_ficha(url_propiedad, telegram_url, agencia):
         "{{ IMAGEN_URL }}": imagen_publica,
         "{{ TITULO }}": titulo,
         "{{ PRECIO }}": precio,
-        "{{ PRECIO_SUB }}": "Precio sujeto a cambios", 
+        "{{ PRECIO_SUB }}": "Precio sujeto a cambios",
         "{{ DESCRIPCION }}": descripcion,
         "{{ UBICACION }}": ubicacion,
-        "{{ DETALLES }}": detalles, # Ahora sí mostrará m2 y ambientes
+        "{{ DETALLES }}": detalles,
         "{{ FECHA }}": datetime.now().strftime("%d/%m/%Y"),
         "{{ AGENCIA }}": agencia,
         "{{ TELEGRAM_URL }}": telegram_url
@@ -252,15 +255,15 @@ def crear_ficha(url_propiedad, telegram_url, agencia):
 
     html_final = html_template
     for k, v in reemplazos.items():
-        # Usamos replace con seguridad por si algún valor es None
-        valor = str(v) if v is not None else ""
-        html_final = html_final.replace(k, valor)
+        html_final = html_final.replace(k, str(v or ""))
 
     ruta_html = os.path.join(carpeta, "index.html")
     with open(ruta_html, "w", encoding="utf-8") as f:
         f.write(html_final)
 
+    logger.info("Ficha %s generada correctamente", ficha_id)
     return ficha_id, carpeta
+    
 # --------------------------
 # MODO MANUAL (para pruebas)
 # --------------------------

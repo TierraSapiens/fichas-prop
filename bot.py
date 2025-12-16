@@ -200,16 +200,24 @@ async def handle_all_messages(message: types.Message):
     if urls:
         url = urls[0]
     if url:
-        await message.reply("✅ Generando la ficha, por favor espere unos segundos...")
-        loop = asyncio.get_event_loop()
-        try:
-            ficha_id, carpeta = await loop.run_in_executor(
-    None,
-    crear_ficha,
-    url,
-    telegram_url,
-    config.get("agencia")
-)
+    await message.reply("✅ Generando la ficha, por favor espere unos segundos...")
+
+    logger.info(
+        "ENTRO A GENERAR FICHA URL | chat_id=%s | user_id=%s | url=%s",
+        message.chat.id,
+        user.id,
+        url
+    )
+
+    loop = asyncio.get_event_loop()
+    try:
+        ficha_id, carpeta = await loop.run_in_executor(
+            None,
+            crear_ficha,
+            url,
+            telegram_url,
+            config.get("agencia")
+        )
 
 # Subir a GitHub automáticamente
             try:
