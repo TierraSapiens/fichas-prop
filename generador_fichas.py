@@ -27,7 +27,22 @@ def detectar_scraper(url):
     #     return "argenprop"
 
     return None
+# --------------------------------------------------------
+# Capa intermedia: origen de datos de la propiedad
+# --------------------------------------------------------
+def obtener_datos_propiedad(url):
+    """
+    Capa intermedia.
+    Hoy: scraper local.
+    Mañana: llamada HTTP a tu PC.
+    """
+    tipo = detectar_scraper(url)
 
+    if tipo == "zonaprop":
+        logger.info("obtener_datos_propiedad -> zonaprop (local)")
+        return scrapear_zonaprop(url)
+
+    return None
 # -------------------
 # 1. Generar ID único
 # -------------------
@@ -182,10 +197,11 @@ def crear_ficha(url_propiedad, telegram_url, agencia):
     logger.info("Scraper detectado: %s", tipo_scraper)
 
     if tipo_scraper == "zonaprop":
-        logger.info("Usando scraper Zonaprop (Playwright)")
+        logger.info("Usando proveedor de datos Zonaprop")
         try:
-            datos = scrapear_zonaprop(url_propiedad)
-
+            datos = obtener_datos_propiedad(url_propiedad)
+            if not datos:
+                raise ValueError("No se pudieron obtener datos de la propiedad")
             titulo = datos.get("titulo", "")
             precio = datos.get("precio", "Consultar")
             ubicacion = datos.get("ubicacion", "")
