@@ -1,5 +1,5 @@
 # ------------------------------------------------------------
-# generador_fichas.py V 1.3.txt —VERSION CORREGIDA Sin Selenium ¿?Playwright
+# generador_fichas.py V 1.3.txt
 # ------------------------------------------------------------
 
 import os
@@ -12,37 +12,10 @@ import time
 from datetime import datetime
 import requests
 from bs4 import BeautifulSoup
-from scrapers.scrapear_zonaprop import scrapear_zonaprop
 import logging
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
-def detectar_scraper(url):
-    url = url.lower()
-
-    if "zonaprop.com.ar" in url:
-        return "zonaprop"
-
-    # futuros:
-    # if "argenprop.com" in url:
-    #     return "argenprop"
-
-    return None
-# --------------------------------------------------------
-# Capa intermedia: origen de datos de la propiedad
-# --------------------------------------------------------
-def obtener_datos_propiedad(url):
-    """
-    Capa intermedia.
-    Hoy: scraper local.
-    Mañana: llamada HTTP a tu PC.
-    """
-    tipo = detectar_scraper(url)
-
-    if tipo == "zonaprop":
-        logger.info("obtener_datos_propiedad -> zonaprop (local)")
-        return scrapear_zonaprop(url)
-
-    return None
 # -------------------
 # 1. Generar ID único
 # -------------------
@@ -113,29 +86,6 @@ def extraer_datos_opengraph(url):
 
     return titulo, descripcion, precio, imagen
 
-# ---------------------------------------------
-# 3. "Descargar imagen" (Hasta ahora 0 exito.!!)
-# ---------------------------------------------
-def _extraer_url_imagen(soup):
-    og = soup.find("meta", property="og:image")
-    if og and og.get("content"):
-        return og.get("content").strip()
-    link_img = soup.find("link", rel="image_src")
-    if link_img and link_img.get("href"):
-        return link_img.get("href").strip()
-    img = soup.find("img")
-    if img:
-        for attr in ("src", "data-src", "data-lazy-src"):
-            u = img.get(attr)
-            if u:
-                return u
-        srcset = img.get("srcset")
-        if srcset:
-            first = srcset.split(",")[0].strip().split(" ")[0]
-            return first
-    return None
-
-
 def descargar_imagen(url_img, carpeta_ficha, pagina_base=None, timeout=8):
     """
     Intenta descargar una imagen. Si url_img es relativa, la resuelve con pagina_base.
@@ -168,7 +118,7 @@ def descargar_imagen(url_img, carpeta_ficha, pagina_base=None, timeout=8):
     return None
 
 # -------------------------------------------
-# 4. Crear ficha
+# 3. Crear ficha
 # -------------------------------------------
 def crear_ficha(url_propiedad, telegram_url, agencia):
     logger.info("ENTRO A crear_ficha | url=%s", url_propiedad)
@@ -192,42 +142,22 @@ def crear_ficha(url_propiedad, telegram_url, agencia):
     detalles = "Información adicional no disponible."
     imagenes_candidatas = []
 
-    # 2. ELEGIR SCRAPER
-    tipo_scraper = detectar_scraper(url_propiedad)
-    logger.info("Scraper detectado: %s", tipo_scraper)
+    # Obtener datos vía OpenGraph
+    logger.info("Obteniendo datos vía OpenGraph")
 
-    if tipo_scraper == "zonaprop":
-        logger.info("Usando proveedor de datos Zonaprop")
-        try:
-            datos = obtener_datos_propiedad(url_propiedad)
-            if not datos:
-                raise ValueError("No se pudieron obtener datos de la propiedad")
-            titulo = datos.get("titulo", "")
-            precio = datos.get("precio", "Consultar")
-            ubicacion = datos.get("ubicacion", "")
-            descripcion = datos.get("descripcion", "")
-            imagenes_candidatas = datos.get("imagenes", [])
+    t_og, d_og, p_og, img_og = extraer_datos_opengraph(url_propiedad)
 
-            caracteristicas = datos.get("caracteristicas", {})
-            if caracteristicas:
-                detalles = " | ".join(
-                    f"{k}: {v}" for k, v in caracteristicas.items()
-                )
+    if t_og:
+       titulo = t_og
 
-        except Exception:
-            logger.exception(
-                "ERROR usando Playwright para Zonaprop, fallback a OpenGraph"
-            )
-            tipo_scraper = None
+    if d_og:
+       descripcion = d_og
 
-    # 3. FALLBACK
-    if tipo_scraper != "zonaprop":
-        logger.info("Usando método OpenGraph (fallback)")
-        t_og, d_og, p_og, img_og = extraer_datos_opengraph(url_propiedad)
-        if t_og: titulo = t_og
-        if d_og: descripcion = d_og
-        if p_og != "Consultar": precio = p_og
-        if img_og: imagenes_candidatas.append(img_og)
+    if p_og and p_og != "Consultar":
+       precio = p_og
+
+    if img_og:
+       imagenes_candidatas.append(img_og)
 
     # 4. PROCESAR IMAGEN
     nombre_img_final = None
@@ -281,7 +211,7 @@ def crear_ficha(url_propiedad, telegram_url, agencia):
     return ficha_id, carpeta
     
 # --------------------------
-# MODO MANUAL (para pruebas)
+# 4. MODO MANUAL (para pruebas)
 # --------------------------
 if __name__ == "__main__":
     url = input("Pegá la URL de la propiedad: ").strip()
