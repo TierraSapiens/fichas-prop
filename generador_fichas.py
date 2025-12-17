@@ -169,7 +169,7 @@ def crear_ficha(url_propiedad, telegram_url, agencia):
         agencia
     )
 
-    # Inicializamos variables por defecto
+    # Iniciar variables por defecto
     titulo = "Sin título"
     descripcion = "Sin descripción"
     precio = "Consultar"

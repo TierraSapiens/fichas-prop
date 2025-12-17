@@ -1,1 +1,1 @@
-worker: apt-get update && apt-get install -y libnss3 libnss3-dev libgdk-pixbuf2.0-0 libatk1.0-0 libgtk-3-0 libxss1 libgbm-dev libglib2.0-0 && playwright install chromium && python bot.py
+web: bash start.sh
