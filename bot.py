@@ -1,22 +1,22 @@
 # -------------------------
-# bot.py – Telegram Bot (aiogram v2)
+# bot.py V 1.4  – Telegram Bot (aiogram v2)
 # -------------------------
 
+import requests
 import os
 import json
 import logging
-import asyncio
 import re
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.utils import executor
 
-from generador_fichas import crear_ficha
-from github_api import subir_ficha_a_github
-
 # =========================
 # CONFIGURACIÓN
 # =========================
+TARGET_URL = os.getenv("TARGET_URL")
+if not TARGET_URL:
+    raise RuntimeError("Falta la variable TARGET_URL")
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 if not TELEGRAM_TOKEN:
@@ -178,31 +178,35 @@ async def generar_ficha(message: types.Message, url: str):
     telegram_url = get_telegram_url(message.from_user)
     cfg = load_config()
 
-    await message.reply("⏳ Generando ficha, por favor esperá...")
+    await message.reply("⏳ Enviando URL al scraper local...")
 
-    loop = asyncio.get_event_loop()
+    payload = {
+        "url": url,
+        "telegram_url": telegram_url,
+        "agencia": cfg["agencia"]
+    }
 
     try:
-        ficha_id, carpeta = await loop.run_in_executor(
-            None,
-            crear_ficha,
-            url,
-            telegram_url,
-            cfg["agencia"]
+        r = requests.post(
+            TARGET_URL,
+            json=payload,
+            timeout=60
         )
 
-        try:
-            subir_ficha_a_github(ficha_id, carpeta)
-        except Exception:
-            logger.exception("Error subiendo a GitHub")
+        if r.status_code != 200:
+            raise RuntimeError(f"Respuesta inválida: {r.status_code}")
 
-        await asyncio.sleep(15)
+        data = r.json()
 
-        public_url = f"https://tierrasapiens.github.io/fichas-prop/fichas/{ficha_id}/"
-        await message.reply(f"🔗 Ficha generada:\n{public_url}")
+        if not data.get("ok"):
+            raise RuntimeError(data.get("error", "Error desconocido"))
 
-    except Exception:
-        logger.exception("Error generando ficha")
+        public_url = data["public_url"]
+
+        await message.reply(f"✅ Ficha generada:\n{public_url}")
+
+    except Exception as e:
+        logger.exception("Error comunicando con scraper local")
         await message.reply("❌ Error generando la ficha")
 
 # =========================
