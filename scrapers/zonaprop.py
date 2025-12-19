@@ -213,6 +213,8 @@ def normalizar_zonaprop(data, url):
         "banios": num("Baños"),
         "superficie_m2": num("Superficie Total") or num("Superficie Cubierta")
     }
+    
+    print("JSON SCRAPER:", data)
 
     return {
         "fuente": "zonaprop",

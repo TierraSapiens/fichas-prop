@@ -130,9 +130,13 @@ async def cmd_generar(message: types.Message):
 
     args = message.get_args().strip()
     if not args:
-        return await message.reply("Uso: /generar <url>")
+        return await message.reply("Uso: /generar <url Zonaprop>")
 
     url = args.split()[0]
+
+    if "zonaprop.com.ar" not in url:
+        return await message.reply("❌ El enlace no parece ser de Zonaprop")
+
     await generar_ficha(message, url)
 
 # =========================
@@ -174,11 +178,19 @@ async def handle_all_messages(message: types.Message):
 # GENERADOR CENTRAL
 # =========================
 
+import asyncio
+import functools
+import requests
+
+# =========================
+# GENERADOR CENTRAL
+# =========================
+
 async def generar_ficha(message: types.Message, url: str):
     telegram_url = get_telegram_url(message.from_user)
     cfg = load_config()
 
-    await message.reply("⏳ Enviando URL al scraper local...")
+    await message.reply("⏳ Enviando URL al scraper...")
 
     payload = {
         "url": url,
@@ -186,12 +198,17 @@ async def generar_ficha(message: types.Message, url: str):
         "agencia": cfg["agencia"]
     }
 
+    loop = asyncio.get_running_loop()
+
     try:
-        r = requests.post(
+        request_fn = functools.partial(
+            requests.post,
             TARGET_URL,
             json=payload,
-            timeout=60
+            timeout=90
         )
+
+        r = await loop.run_in_executor(None, request_fn)
 
         if r.status_code != 200:
             raise RuntimeError(f"Respuesta inválida: {r.status_code}")
@@ -206,7 +223,7 @@ async def generar_ficha(message: types.Message, url: str):
         await message.reply(f"✅ Ficha generada:\n{public_url}")
 
     except Exception as e:
-        logger.exception("Error comunicando con scraper local")
+        logger.exception("Error comunicando con scraper")
         await message.reply("❌ Error generando la ficha")
 
 # =========================
