@@ -14,8 +14,61 @@ NGROK_URL = "https://jamey-gamogenetic-incompliantly.ngrok-free.dev"
 GITHUB_OWNER = "TierraSapiens"
 GITHUB_REPO = "fichas-prop"
 
+# Dialogo en Telegram
 def start(update: Update, context: CallbackContext):
-    update.message.reply_text("👋 ¡Hola! Envíame un link de Zonaprop para generar la ficha.")
+    user_name = update.message.from_user.first_name
+    texto_bienvenida = (
+        f"🏠 *¡Hola, {user_name}! Bienvenid@ a Ficha Prop.*\n\n"
+        "Soy tu asistente para generar fichas web profesionales "
+        "a partir de enlaces de Zonaprop.\n\n"
+        "📌 *¿Cómo empezar?*\n"
+        "Simplemente envíame el **link de la propiedad** que quieras convertir."
+    )
+    
+    # Enviamos el mensaje con Markdown para que las negritas funcionen
+    update.message.reply_text(texto_bienvenida, parse_mode='Markdown')
+
+def procesar_enlace(update: Update, context: CallbackContext):
+    url_propiedad = update.message.text
+    user = update.message.from_user
+    
+    # 1. Feedback Visual Inicial
+    msg_estado = update.message.reply_text("🔍 *Analizando enlace...*", parse_mode='Markdown')
+
+    try:
+        # 2. Paso del Scraper
+        msg_estado.edit_text("⚙️ *Conectando con el servidor local...*\n(Extrayendo datos de Zonaprop ⏳)")
+        res = requests.post(f"{NGROK_URL}/scrape/zonaprop", json={"url": url_propiedad}, timeout=60)
+        resultado = res.json()
+
+        if not resultado.get('ok'):
+            return msg_estado.edit_text("❌ *Error:* No pudimos obtener los datos. Verificá que el link sea correcto.")
+
+        # 3. Paso de Generación
+        msg_estado.edit_text("🎨 *Generando diseño de ficha personalizada...*")
+        data = resultado['data']
+        
+        # ... (aquí va tu lógica de generar_html y guardar carpeta temporal) ...
+        
+        # 4. Paso de Subida
+        msg_estado.edit_text("🚀 *Publicando ficha en el servidor web...*")
+        
+        # ... (aquí va tu lógica de subir_ficha_a_github) ...
+
+        # 5. Resultado Final con Formato Elegante
+        link_web = f"https://{GITHUB_OWNER.lower()}.github.io/{GITHUB_REPO}/fichas/{ficha_id}/index.html"
+        
+        texto_final = (
+            "✅ *¡Ficha generada con éxito!*\n\n"
+            f"🏠 *Propiedad:* {data['titulo']}\n"
+            f"💰 *Precio:* {data['precio']}\n\n"
+            f"🌐 [VER FICHA ONLINE]({link_web})"
+        )
+        
+        msg_estado.edit_text(texto_final, parse_mode='Markdown', disable_web_page_preview=False)
+
+    except Exception as e:
+        msg_estado.edit_text(f"⚠️ *Hubo un problema:* \n`{str(e)}`", parse_mode='Markdown')
 
 def procesar_enlace(update: Update, context: CallbackContext):
     url_propiedad = update.message.text
