@@ -32,7 +32,7 @@ def procesar_enlace(update: Update, context: CallbackContext):
     
     # --- VALIDACIÓN DE DIÁLOGO ---
     if not url_recibida.startswith("http"):
-        return update.message.reply_text("🤔 *Ese no parece un link válido.*\nPor favor, enviame una URL que empiece con `https://...`", parse_mode='Markdown')
+        return update.message.reply_text("🤔 *Hola, este no parece un link válido.*\nPor favor, enviame un enlace valido que empiece con `https://...`", parse_mode='Markdown')
 
     msg_estado = update.message.reply_text("🔍 *Analizando propiedad...*", parse_mode='Markdown')
 
