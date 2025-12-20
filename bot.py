@@ -1,33 +1,88 @@
+# bot.py - Versión Integrada
+import os
 import requests
-from generador_fichas import generar_html_ficha
-from github_api import subir_a_github # Asumiendo que tenés este script
+import shutil
+from datetime import datetime
+from telegram import Update
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 
+# Importamos la función exacta de tu github_api.py V 0.4
+from github_api import subir_ficha_a_github
+
+# Configuración
 NGROK_URL = "https://jamey-gamogenetic-incompliantly.ngrok-free.dev"
+GITHUB_OWNER = "TierraSapiens"
+GITHUB_REPO = "fichas-prop"
 
-def manejar_mensaje(update, context):
+def start(update: Update, context: CallbackContext):
+    update.message.reply_text("👋 ¡Hola! Envíame un link de Zonaprop para generar la ficha.")
+
+def procesar_enlace(update: Update, context: CallbackContext):
     url_propiedad = update.message.text
     user = update.message.from_user
     
-    update.message.reply_text("⏳ Procesando propiedad en tu PC local... esto demora unos 30s.")
+    update.message.reply_text("⏳ Conectando con tu PC local para scrapear... (30-40 seg)")
 
     try:
-        # 1. Pedir el scraping a tu PC (Paso 5)
+        # 1. PEDIR DATOS AL SCRAPER LOCAL (Paso 5 y 6)
         res = requests.post(f"{NGROK_URL}/scrape/zonaprop", json={"url": url_propiedad}, timeout=60)
-        scraper_data = res.json()
+        resultado = res.json()
 
-        if scraper_data.get('ok'):
-            # 2. Generar el HTML con los datos (Paso 8)
-            info_usuario = {"username": user.username, "id": user.id}
-            html_final = generar_html_ficha(scraper_data['data'], info_usuario)
+        if not resultado.get('ok'):
+            return update.message.reply_text("❌ El scraper local falló o no encontró la propiedad.")
 
-            # 3. Subir a GitHub Pages (Paso 9)
-            # Aquí usarías tu github_api.py para crear el archivo en la carpeta /fichas/
-            nombre_archivo = f"ficha_{datetime.now().timestamp()}.html"
-            link_publico = subir_a_github(html_final, nombre_archivo)
+        data = resultado['data']
+        update.message.reply_text("📦 Datos recibidos. Generando ficha web...")
 
-            update.message.reply_text(f"✅ ¡Ficha lista! Podés verla y compartirla aquí:\n{link_publico}")
-        else:
-            update.message.reply_text("❌ Error en el scraper local.")
+        # 2. CREAR CARPETA TEMPORAL (Paso 8)
+        ficha_id = f"prop_{datetime.now().strftime('%H%M%S')}"
+        carpeta_local = f"temp_{ficha_id}"
+        os.makedirs(carpeta_local, exist_ok=True)
+
+        # 3. GENERAR EL CONTACTO (Tu pedido: Teléfono/User del que pide)
+        contacto_url = f"https://t.me/{user.username}" if user.username else f"tg://user?id={user.id}"
+
+        # 4. LEER Y REEMPLAZAR EN EL TEMPLATE
+        with open('ficha_template.html', 'r', encoding='utf-8') as f:
+            template = f.read()
+
+        # Armamos los detalles en una lista simple para el HTML
+        detalles_str = "".join([f"<li><strong>{k}:</strong> {v}</li>" for k, v in data['caracteristicas'].items()])
+
+        html_final = template.replace("{{ TITULO }}", data['titulo']) \
+                             .replace("{{ PRECIO }}", data['precio']) \
+                             .replace("{{ UBICACION }}", data['ubicacion']) \
+                             .replace("{{ DESCRIPCION }}", data['descripcion']) \
+                             .replace("{{ IMAGEN_URL }}", data['imagenes'][0]) \
+                             .replace("{{ TELEGRAM_URL }}", contacto_url) \
+                             .replace("{{ DETALLES }}", f"<ul>{detalles_str}</ul>") \
+                             .replace("{{ FICHA_ID }}", ficha_id) \
+                             .replace("{{ AGENCIA }}", "Administración y Gestión")
+
+        # Guardar index.html en la carpeta temporal
+        with open(os.path.join(carpeta_local, "index.html"), "w", encoding='utf-8') as f:
+            f.write(html_final)
+
+        # 5. SUBIR A GITHUB (Paso 9)
+        subir_ficha_a_github(ficha_id, carpeta_local)
+
+        # 6. ENVIAR LINK FINAL
+        link_web = f"https://{GITHUB_OWNER.lower()}.github.io/{GITHUB_REPO}/fichas/{ficha_id}/index.html"
+        update.message.reply_text(f"✅ ¡Ficha publicada!\n\n🔗 Ver ficha: {link_web}")
+
+        # Limpieza
+        shutil.rmtree(carpeta_local)
 
     except Exception as e:
-        update.message.reply_text(f"❌ Error de conexión: {str(e)}")
+        update.message.reply_text(f"❌ Error crítico: {str(e)}")
+
+# --- CONFIGURACIÓN DEL BOT ---
+TOKEN_TELEGRAM = os.getenv("TELEGRAM_TOKEN") # Ponelo en Railway también
+updater = Updater(TOKEN_TELEGRAM)
+dp = updater.dispatcher
+dp.add_handler(CommandHandler("start", start))
+dp.add_handler(MessageHandler(Filters.text & ~Filters.command, procesar_enlace))
+
+if __name__ == "__main__":
+    updater.start_polling()
+    updater.idle()
