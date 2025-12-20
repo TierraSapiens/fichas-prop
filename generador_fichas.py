@@ -1,231 +1,37 @@
 # ------------------------------------------------------------
-# generador_fichas.py V 1.3.txt
+# generador_fichas.py V 1.5.txt
 # ------------------------------------------------------------
-
 import os
-import json
-import random
-import string
-import re
-import urllib.parse
-import time
 from datetime import datetime
-import requests
-from bs4 import BeautifulSoup
-import logging
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
 
-# -------------------
-# 1. Generar ID único
-# -------------------
-def generar_id_unico():
-    caracteres = string.ascii_letters + string.digits
-    largo = 20
+def generar_html_ficha(data, usuario_info, template_path='ficha_template.html'):
+    # Leer el template
+    with open(template_path, 'r', encoding='utf-8') as f:
+        html = f.read()
 
-    if os.path.exists("ids_generados.json"):
-        with open("ids_generados.json", "r", encoding="utf-8") as f:
-            usados = set(json.load(f))
-    else:
-        usados = set()
+    # Formatear detalles (Características) para el HTML
+    detalles_html = "<ul>"
+    for k, v in data.get('caracteristicas', {}).items():
+        detalles_html += f"<li><strong>{k}:</strong> {v}</li>"
+    detalles_html += "</ul>"
 
-    while True:
-        nuevo_id = ''.join(random.choice(caracteres) for _ in range(largo))
-        if nuevo_id not in usados:
-            usados.add(nuevo_id)
-            break
-
-    with open("ids_generados.json", "w", encoding="utf-8") as f:
-        json.dump(list(usados), f, indent=2)
-
-    return nuevo_id
-
-# --------------------------------------------------------
-# 2. Extraer datos OpenGraph (Título, Descripción, Imagen)
-# --------------------------------------------------------
-def extraer_datos_opengraph(url):
-    headers = {"User-Agent": "Mozilla/5.0"}
-
-    try:
-        r = requests.get(url, headers=headers, timeout=10)
-        r.raise_for_status()
-        soup = BeautifulSoup(r.text, "html.parser")
-    except Exception:
-        return "", "", "", None
-
-    def og(prop):
-        tag = soup.find("meta", property=f"og:{prop}")
-        return tag.get("content").strip() if tag and tag.get("content") else None
-
-    titulo = og("title") or ""
-    descripcion = og("description") or ""
-
-    imagen = og("image")
-
-# -------------------------------------------
-#Intentar detectar "Un Precio" desde título o descripción...
-# -------------------------------------------
-    precio = "Consultar"
-    posibles = [titulo, descripcion]
-    patrones = [
-        r"USD\s?[0-9\.,]+",
-        r"U\$S\s?[0-9\.,]+",
-        r"\$\s?[0-9\.,]+"
-    ]
-
-    for texto in posibles:
-        if not texto:
-            continue
-        for p in patrones:
-            m = re.search(p, texto, flags=re.IGNORECASE)
-            if m:
-                precio = m.group(0)
-                break
-        if precio != "Consultar":
-            break
-
-    return titulo, descripcion, precio, imagen
-
-def descargar_imagen(url_img, carpeta_ficha, pagina_base=None, timeout=8):
-    """
-    Intenta descargar una imagen. Si url_img es relativa, la resuelve con pagina_base.
-    Devuelve el nombre del archivo (ej: 'foto.jpg') o None.
-    """
-    try:
-        if not url_img:
-            return None
-        if pagina_base and not urllib.parse.urlparse(url_img).netloc:
-            url_img = urllib.parse.urljoin(pagina_base, url_img)
-        for intento in range(2):
-            try:
-                headers = {"User-Agent": "Mozilla/5.0"}
-                r = requests.get(url_img, headers=headers, timeout=timeout)
-                r.raise_for_status()
-                ext = os.path.splitext(urllib.parse.urlparse(url_img).path)[1].lower()
-                os.makedirs(carpeta_ficha, exist_ok=True)
-                if ext not in (".jpg", ".jpeg", ".png", ".webp", ".gif"):
-                    ext = ".jpg"
-                nombre = "foto" + ext
-                ruta = os.path.join(carpeta_ficha, nombre)
-                with open(ruta, "wb") as f:
-                    f.write(r.content)
-                return nombre
-            except Exception:
-                time.sleep(0.5)
-                continue
-    except Exception:
-        pass
-    return None
-
-# -------------------------------------------
-# 3. Crear ficha
-# -------------------------------------------
-def crear_ficha(url_propiedad, telegram_url, agencia):
-    logger.info("ENTRO A crear_ficha | url=%s", url_propiedad)
-
-    # 1. Preparar carpetas
-    ficha_id = generar_id_unico()
-    carpeta = os.path.join("fichas", ficha_id)
-    os.makedirs(carpeta, exist_ok=True)
-
-    logger.info(
-        "--- Generando Ficha ID: %s | agencia=%s ---",
-        ficha_id,
-        agencia
-    )
-
-    # Iniciar variables por defecto
-    titulo = "Sin título"
-    descripcion = "Sin descripción"
-    precio = "Consultar"
-    ubicacion = "Ubicación no especificada"
-    detalles = "Información adicional no disponible."
-    imagenes_candidatas = []
-
-    # Obtener datos vía OpenGraph
-    logger.info("Obteniendo datos vía OpenGraph")
-
-    t_og, d_og, p_og, img_og = extraer_datos_opengraph(url_propiedad)
-
-    if t_og:
-       titulo = t_og
-
-    if d_og:
-       descripcion = d_og
-
-    if p_og and p_og != "Consultar":
-       precio = p_og
-
-    if img_og:
-       imagenes_candidatas.append(img_og)
-
-    # 4. PROCESAR IMAGEN
-    nombre_img_final = None
-    for img_url in imagenes_candidatas:
-        logger.info("Intentando descargar imagen: %s", img_url)
-        nombre = descargar_imagen(img_url, carpeta, pagina_base=url_propiedad)
-        if nombre:
-            nombre_img_final = nombre
-            break
-
-    if nombre_img_final:
-        imagen_publica = (
-            f"https://tierrasapiens.github.io/fichas-prop/"
-            f"fichas/{ficha_id}/{nombre_img_final}"
-        )
-    else:
-        logger.warning("No se pudo descargar imagen, usando default")
-        imagen_publica = "https://tierrasapiens.github.io/fichas-prop/default.jpg"
-
-    # 5. GENERAR HTML
-    try:
-        with open("ficha_template.html", "r", encoding="utf-8") as f:
-            html_template = f.read()
-    except FileNotFoundError:
-        logger.error("No se encontró ficha_template.html")
-        return None, None
-
+    # Preparar los reemplazos
     reemplazos = {
-        "{{ FICHA_ID }}": ficha_id,
-        "{{ IMAGEN_URL }}": imagen_publica,
-        "{{ TITULO }}": titulo,
-        "{{ PRECIO }}": precio,
-        "{{ PRECIO_SUB }}": "Precio sujeto a cambios",
-        "{{ DESCRIPCION }}": descripcion,
-        "{{ UBICACION }}": ubicacion,
-        "{{ DETALLES }}": detalles,
+        "{{ TITULO }}": data.get('titulo', 'Propiedad'),
+        "{{ DESCRIPCION }}": data.get('descripcion', '').replace('\n', '<br>'),
+        "{{ IMAGEN_URL }}": data.get('imagenes', [''])[0], # Primera foto
+        "{{ UBICACION }}": data.get('ubicacion', 'Consultar ubicación'),
+        "{{ PRECIO }}": data.get('precio', 'Consultar'),
+        "{{ PRECIO_SUB }}": "Expensas: Consultar", # Podés extraerlo luego si querés
+        "{{ DETALLES }}": detalles_html,
+        "{{ FICHA_ID }}": datetime.now().strftime("%Y%m%d%H%M"),
         "{{ FECHA }}": datetime.now().strftime("%d/%m/%Y"),
-        "{{ AGENCIA }}": agencia,
-        "{{ TELEGRAM_URL }}": telegram_url
+        "{{ AGENCIA }}": "Propio Inmobiliaria",
+        "{{ TELEGRAM_URL }}": f"https://t.me/{usuario_info['username']}" if usuario_info.get('username') else f"tg://user?id={usuario_info['id']}"
     }
 
-    html_final = html_template
-    for k, v in reemplazos.items():
-        html_final = html_final.replace(k, str(v or ""))
+    # Reemplazar todo en el HTML
+    for tag, valor in reemplazos.items():
+        html = html.replace(tag, str(valor))
 
-    ruta_html = os.path.join(carpeta, "index.html")
-    with open(ruta_html, "w", encoding="utf-8") as f:
-        f.write(html_final)
-
-    logger.info("Ficha %s generada correctamente", ficha_id)
-    return ficha_id, carpeta
-    
-# --------------------------
-# 4. MODO MANUAL (para pruebas)
-# --------------------------
-if __name__ == "__main__":
-    url = input("Pegá la URL de la propiedad: ").strip()
-
-    ficha_id, carpeta = crear_ficha(
-    url,
-    "https://t.me/PRUEBA_USUARIO",
-    "AGENCIA PRUEBA"
-)
-
-    print("\n--- FICHA GENERADA ---")
-    print("ID:", ficha_id)
-    print("Carpeta:", carpeta)
-    print("URL pública:")
-    print(f"https://tierrasapiens.github.io/fichas-prop/fichas/{ficha_id}/")
-
-# FIN.
+    return html
