@@ -41,8 +41,13 @@ async def scrapear_zonaprop(url: str) -> dict:
         # --- EXTRACCIÓN DE DATOS ---
         try:
             # Título
-            h1 = page.locator("h1").first
-            data["titulo"] = (await h1.inner_text()).strip() if await h1.count() > 0 else "No encontrado"
+            selectors_titulo = ["h1", ".title-type", ".section-title h1", "h2.title"]
+            for selector in selectors_titulo:
+                h1 = page.locator(selector).first
+                if await h1.count() > 0:
+                    texto = await h1.inner_text()
+                    data["titulo"] = texto.strip()
+                    break
 
             # Precio
             precio = page.locator(".price-value span").first
