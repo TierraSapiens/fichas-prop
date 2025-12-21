@@ -64,7 +64,7 @@ def procesar_enlace(update: Update, context: CallbackContext):
     try:
         # 1. Llamada al Scraper en PC
         msg_estado.edit_text("⚙️ *Conectando con el servidor local...*\n(Extrayendo datos ⏳)")
-        res = requests.post(f"{NGROK_URL}/scrape/zonaprop", json={"url": url_recibida}, timeout=70)
+        res = requests.post(f"{NGROK_URL}/scrape/zonaprop", json={"url": url_recibida}, timeout=120)
         resultado = res.json()
 
         if not resultado.get('ok') or resultado['data']['titulo'] == "No encontrado":
