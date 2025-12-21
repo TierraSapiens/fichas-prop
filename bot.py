@@ -35,14 +35,14 @@ def procesar_enlace(update: Update, context: CallbackContext):
         return start(update, context)
 
     # 2. Agradecimientos
-    if texto_usuario in ["gracias", "muchas gracias", "joya", "buenísimo", "buenisimo"]:
+    if texto_usuario in ["gracias", "gracias!", "gracias !", "muchas gracias", "joya", "buenísimo", "buenisimo"]:
         return update.message.reply_text(f"¡De nada, {user.first_name}! Quedo a la espera de tu próximo link. 😊")
 
     # 3. Ayuda
     if "ayuda" in texto_usuario or "como funciona" in texto_usuario:
         return update.message.reply_text(
             "📖 *Guía rápida:*\n\n"
-            "1. Buscá una propiedad en Zonaprop.\n"
+            "1. Buscá una propiedad.\n"
             "2. Copiá el link de la barra de direcciones.\n"
             "3. Pegalo acá y yo me encargo del resto.\n\n"
             "¿Tenés algún link para probar?", 
