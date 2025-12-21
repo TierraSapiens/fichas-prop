@@ -14,7 +14,7 @@ NGROK_URL = "https://jamey-gamogenetic-incompliantly.ngrok-free.dev"
 GITHUB_OWNER = "TierraSapiens"
 GITHUB_REPO = "fichas-prop"
 
-def start(update: Update, context: CallbackContext):
+def start(update: Update, context: CallbackContext): 
     """Diálogo de bienvenida (Formato de arranque)"""
     user_name = update.message.from_user.first_name
     texto_bienvenida = (
@@ -26,14 +26,40 @@ def start(update: Update, context: CallbackContext):
     update.message.reply_text(texto_bienvenida, parse_mode='Markdown')
 
 def procesar_enlace(update: Update, context: CallbackContext):
-    """Manejo de los mensajes y creación de la ficha"""
-    url_recibida = update.message.text
+    """Manejo conversacional y procesamiento de links"""
+    texto_usuario = update.message.text.lower().strip()
     user = update.message.from_user
-    
-    # VALIDACION DE DIALOGO Inicio
-    if not url_recibida.startswith("http"):
-        return update.message.reply_text("🤔 *Hola, este no parece un link válido.*\nPor favor, enviame un enlace valido que empiece con `https://...`", parse_mode='Markdown')
 
+    # VALIDACION CONVERSACIONAL
+    # 1. Saludos
+    if texto_usuario in ["hola", "buenas", "buen día", "buen dia", "hola!", "inicio"]:
+        return start(update, context)
+
+    # 2. Agradecimientos
+    if texto_usuario in ["gracias", "muchas gracias", "joya", "buenísimo", "buenisimo"]:
+        return update.message.reply_text(f"¡De nada, {user.first_name}! Quedo a la espera de tu próximo link. 😊")
+
+    # 3. Ayuda
+    if "ayuda" in texto_usuario or "como funciona" in texto_usuario:
+        return update.message.reply_text(
+            "📖 *Guía rápida:*\n\n"
+            "1. Buscá una propiedad en Zonaprop.\n"
+            "2. Copiá el link de la barra de direcciones.\n"
+            "3. Pegalo acá y yo me encargo del resto.\n\n"
+            "¿Tenés algún link para probar?", 
+            parse_mode='Markdown'
+        )
+
+    # 4. Si no es saludo ni ayuda, verificamos si es un link
+    if not texto_usuario.startswith("http"):
+        return update.message.reply_text(
+            "🤔 No entendí este mensaje. Si querés una ficha, enviame un **link de Zonaprop**.\n"
+            "Si necesitás ayuda, escribí 'ayuda'.",
+            parse_mode='Markdown'
+        )
+
+    # --- SI PASA TODAS LAS VALIDACIONES, ES UN LINK: EMPIEZA EL SCRAPING ---
+    url_recibida = update.message.text # Usamos el original (con mayúsculas si las tuviera)
     msg_estado = update.message.reply_text("🔍 *Analizando propiedad...*", parse_mode='Markdown')
 
     try:
