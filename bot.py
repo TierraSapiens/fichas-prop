@@ -19,9 +19,9 @@ def start(update: Update, context: CallbackContext):
     user_name = update.message.from_user.first_name
     texto_bienvenida = (
         f"🏠 *¡Hola, {user_name}! Bienvenid@ a Ficha Prop.*\n\n"
-        "Soy tu asistente para generar fichas web profesionales.\n\n"
+        "Soy tu asistente para generar tus fichas web.\n\n"
         "📌 *¿Cómo empezar?*\n"
-        "Simplemente enviame el **link de Zonaprop** de la propiedad que te interese."
+        "Simplemente enviame el **link** de la propiedad que te interese."
     )
     update.message.reply_text(texto_bienvenida, parse_mode='Markdown')
 
@@ -30,7 +30,6 @@ def procesar_enlace(update: Update, context: CallbackContext):
     texto_usuario = update.message.text.lower().strip()
     user = update.message.from_user
 
-    # VALIDACION CONVERSACIONAL
     # 1. Saludos
     if texto_usuario in ["hola", "buenas", "buen día", "buen dia", "hola!", "inicio"]:
         return start(update, context)
@@ -50,7 +49,7 @@ def procesar_enlace(update: Update, context: CallbackContext):
             parse_mode='Markdown'
         )
 
-    # 4. Si no es saludo ni ayuda, verificamos si es un link
+    # 4. Si no es saludo ni ayuda, verifica si es un link
     if not texto_usuario.startswith("http"):
         return update.message.reply_text(
             "🤔 No entendí este mensaje. Si querés una ficha, enviame un **link de Zonaprop**.\n"
@@ -58,8 +57,8 @@ def procesar_enlace(update: Update, context: CallbackContext):
             parse_mode='Markdown'
         )
 
-    # --- SI PASA TODAS LAS VALIDACIONES, ES UN LINK: EMPIEZA EL SCRAPING ---
-    url_recibida = update.message.text # Usamos el original (con mayúsculas si las tuviera)
+    # SI pasa todas la validaciones, es un link empieza scraping
+    url_recibida = update.message.text
     msg_estado = update.message.reply_text("🔍 *Analizando propiedad...*", parse_mode='Markdown')
 
     try:
