@@ -1,5 +1,5 @@
 #--------------------
-# zonaprop.py V 1.0
+# zonaprop.py V 1.1
 #--------------------
 import re
 from playwright.async_api import async_playwright
@@ -36,9 +36,10 @@ async def scrapear_zonaprop(url: str) -> dict:
 
         page = await context.new_page()
 
-        # Bloquear assets pesados (CLAVE)
+        # Bloqueador Optimizado (Permite CSS para evitar errores de visibilidad)
         async def block_assets(route):
-            if re.search(r"\.(png|jpg|jpeg|svg|css|woff|woff2)$", route.request.url):
+            # Solo bloqueamos imágenes y fuentes (lo más pesado)
+            if route.request.resource_type in ["image", "font", "media"]:
                 await route.abort()
             else:
                 await route.continue_()
@@ -46,8 +47,10 @@ async def scrapear_zonaprop(url: str) -> dict:
         await page.route("**/*", block_assets)
 
         try:
-            await page.goto(url, timeout=60000, wait_until="domcontentloaded")
-            await page.wait_for_timeout(3000)
+            # Quitamos el wait_until="domcontentloaded" y usamos "commit" para ir más rápido
+            await page.goto(url, timeout=45000, wait_until="commit")
+            # Esperamos específicamente a que el cuerpo de la página exista
+            await page.wait_for_selector("body", timeout=10000)
         except Exception as e:
             print("Aviso de carga:", e)
 
@@ -128,19 +131,18 @@ async def scrapear_zonaprop(url: str) -> dict:
         except:
             pass
 
-        # 6️⃣ IMAGENES
+        # 6️⃣ IMAGENES (Ajustado para capturar links aunque no se descarguen)
         try:
-            imgs = await page.locator("img").all()
-            for img in imgs:
-                src = await img.get_attribute("src")
-                if src and "zonapropcdn" in src and "static" not in src:
-                    hi = src.replace("360x266", "960x720")
-                    if hi not in data["imagenes"]:
-                        data["imagenes"].append(hi)
+            # Buscamos en todo el código fuente de la página links de fotos
+            html_content = await page.content()
+            links_fotos = re.findall(r'https://[^\s"\'<>]*zonapropcdn[^\s"\'<>]*\.jpg', html_content)
+            
+            for src in links_fotos:
+                hi = src.replace("360x266", "960x720").replace("720x532", "960x720")
+                if hi not in data["imagenes"] and "static" not in hi:
+                    data["imagenes"].append(hi)
         except:
             pass
-
-        await browser.close()
 
     print("JSON SCRAPER:", data)
     return data
