@@ -36,9 +36,8 @@ async def scrapear_zonaprop(url: str) -> dict:
 
         page = await context.new_page()
 
-        # Bloqueador Optimizado (Permite CSS para evitar errores de visibilidad)
+        # Bloqueador de assets (dejamos CSS para que el 'Ver más' funcione)
         async def block_assets(route):
-            # Solo bloqueamos imágenes y fuentes (lo más pesado)
             if route.request.resource_type in ["image", "font", "media"]:
                 await route.abort()
             else:
@@ -47,9 +46,9 @@ async def scrapear_zonaprop(url: str) -> dict:
         await page.route("**/*", block_assets)
 
         try:
-            # Quitamos el wait_until="domcontentloaded" y usamos "commit" para ir más rápido
+            # "commit" es la forma más rápida de entrar
             await page.goto(url, timeout=45000, wait_until="commit")
-            # Esperamos específicamente a que el cuerpo de la página exista
+            # Esperamos solo a que el cuerpo de la página esté ahí
             await page.wait_for_selector("body", timeout=10000)
         except Exception as e:
             print("Aviso de carga:", e)
@@ -131,27 +130,27 @@ async def scrapear_zonaprop(url: str) -> dict:
         except:
             pass
 
-        # 6️⃣ IMAGENES (Filtrado inteligente para velocidad)
+        # 6️⃣ IMAGENES - Versión Rayo
         try:
-            html_content = await page.content()
-            # Buscamos todos los links de fotos
-            links_raw = re.findall(r'https://[^\s"\'<>]*zonapropcdn[^\s"\'<>]*\.jpg', html_content)
+            # Obtenemos todo el código de la página de una vez
+            contenido_html = await page.content()
             
-            for src in links_raw:
-                # Solo nos interesan las que tienen el patrón de fotos de propiedad
-                if "avisos" in src and "static" not in src:
-                    # Forzamos a que siempre sea la versión de alta calidad
-                    # Reemplazamos cualquier tamaño que venga por 960x720
-                    hi = re.sub(r'/\d+x\d+/', '/960x720/', src)
-                    
-                    if hi not in data["imagenes"]:
-                        data["imagenes"].append(hi)
+            # Buscamos links que sigan el patrón de fotos de Zonaprop
+            patron = r'https://imgar\.zonapropcdn\.com/avisos/[^"\'>]*\.jpg'
+            links_hallados = re.findall(patron, contenido_html)
             
-            # Si hay demasiadas, limitamos a las primeras 15 para no saturar
-            data["imagenes"] = data["imagenes"][:15]
+            fotos_finales = []
+            for link in links_hallados:
+                # Normalizamos todas a 960x720 (Alta Calidad)
+                link_hd = re.sub(r'/\d+x\d+/', '/960x720/', link)
+                if link_hd not in fotos_finales:
+                    fotos_finales.append(link_hd)
+            
+            # Limitamos a 10 para que el JSON no sea pesado
+            data["imagenes"] = fotos_finales[:10]
             
         except Exception as e:
-            print("Error en imágenes:", e)
+            print(f"Error extrayendo imágenes: {e}")
 
     print("JSON SCRAPER:", data)
     return data
