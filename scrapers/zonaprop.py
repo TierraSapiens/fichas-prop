@@ -34,7 +34,7 @@ async def scrapear_zonaprop(url: str) -> dict:
         await page.route("**/*", block_assets)
 
         try:
-            await page.goto(url, timeout=25000, wait_until="domcontentloaded")
+            await page.goto(url, timeout=45000, wait_until="domcontentloaded")
         except Exception as e:
             print(f"Aviso de carga rápida: {e}")
 
