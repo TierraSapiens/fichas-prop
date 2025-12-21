@@ -1,15 +1,15 @@
-# bot.py - Versión Integrada
+#---------------
+# bot.py V 1.5 - Garbo 20/12/2025
+#---------------
 import os
 import requests
 import shutil
 from datetime import datetime
 from telegram import Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
-
-# Importamos la función de tu github_api.py V 0.4
 from github_api import subir_ficha_a_github
 
-# Configuración
+# Configuracion
 NGROK_URL = "https://jamey-gamogenetic-incompliantly.ngrok-free.dev"
 GITHUB_OWNER = "TierraSapiens"
 GITHUB_REPO = "fichas-prop"
@@ -30,14 +30,14 @@ def procesar_enlace(update: Update, context: CallbackContext):
     url_recibida = update.message.text
     user = update.message.from_user
     
-    # --- VALIDACIÓN DE DIÁLOGO ---
+    # VALIDACION DE DIALOGO Inicio
     if not url_recibida.startswith("http"):
         return update.message.reply_text("🤔 *Hola, este no parece un link válido.*\nPor favor, enviame un enlace valido que empiece con `https://...`", parse_mode='Markdown')
 
     msg_estado = update.message.reply_text("🔍 *Analizando propiedad...*", parse_mode='Markdown')
 
     try:
-        # 1. Llamada al Scraper en tu PC
+        # 1. Llamada al Scraper en PC
         msg_estado.edit_text("⚙️ *Conectando con el servidor local...*\n(Extrayendo datos ⏳)")
         res = requests.post(f"{NGROK_URL}/scrape/zonaprop", json={"url": url_recibida}, timeout=70)
         resultado = res.json()
@@ -54,8 +54,7 @@ def procesar_enlace(update: Update, context: CallbackContext):
 
         msg_estado.edit_text("🎨 *Diseñando ficha web personalizada...*")
 
-        # 3. Datos del usuario para el botón de contacto
-        # Esto cumple tu pedido: Sale con tu contacto/teléfono de Telegram
+        # 3. Datos del usuario para el botón de contacto de Telegram
         contacto_url = f"https://t.me/{user.username}" if user.username else f"tg://user?id={user.id}"
 
         # 4. Generar HTML desde el template
@@ -101,7 +100,7 @@ def procesar_enlace(update: Update, context: CallbackContext):
             shutil.rmtree(carpeta_local)
         msg_estado.edit_text(f"⚠️ *Hubo un problema:* \n`{str(e)}`", parse_mode='Markdown')
 
-# --- INICIO ---
+# INICIO
 TOKEN_TELEGRAM = os.getenv("TELEGRAM_TOKEN")
 updater = Updater(TOKEN_TELEGRAM)
 dp = updater.dispatcher
