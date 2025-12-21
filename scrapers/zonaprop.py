@@ -1,9 +1,10 @@
-# zonaprop.py V 1.2 (Optimizado)
+# zonaprop.py V 1.3 (Anti-Detección Reforzado)
 import re
+import random
 from playwright.async_api import async_playwright
 
 async def scrapear_zonaprop(url: str) -> dict:
-    print(f"--- Iniciando scraping optimizado: {url} ---")
+    print(f"--- Iniciando scraping (Modo Visual): {url} ---")
 
     data = {
         "fuente": "zonaprop",
@@ -17,48 +18,62 @@ async def scrapear_zonaprop(url: str) -> dict:
     }
 
     async with async_playwright() as p:
-        # Lanzamos con argumentos anti-detección
+        # 1. LANZAMIENTO DEL NAVEGADOR
+        # Usamos headless=False para que Zonaprop detecte GPU y renderizado real.
+        # Esto abre la ventana de Chrome en tu PC (no la cierres, se cierra sola).
         browser = await p.chromium.launch(
-            headless=True,
+            headless=False,  # <--- CAMBIO CLAVE: Ventana visible
             args=[
                 '--disable-blink-features=AutomationControlled',
+                '--start-maximized',
                 '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-accelerated-2d-canvas',
-                '--disable-gpu'
-            ]
+                '--disable-infobars',
+            ],
+            ignore_default_args=["--enable-automation"] # Oculta la barra de "Chrome automatizado"
         )
 
         context = await browser.new_context(
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            viewport={'width': 1280, 'height': 800}
+            viewport={'width': 1366, 'height': 768},
+            locale='es-AR'
         )
 
         page = await context.new_page()
 
-        # Bloqueador de assets agresivo para ganar velocidad
-        async def block_assets(route):
-            if route.request.resource_type in ["image", "media", "font", "stylesheet"]:
+        # Bloqueamos solo cosas muy pesadas, pero dejamos imagenes para parecer real
+        # A veces bloquear todo alerta al sistema anti-bot.
+        async def block_heavy_stuff(route):
+            if route.request.resource_type in ["media", "font"]:
                 await route.abort()
             else:
                 await route.continue_()
 
-        await page.route("**/*", block_assets)
+        await page.route("**/*", block_heavy_stuff)
 
         try:
-            # Bajamos el timeout a 30s. Si no carga en 30s, no va a cargar.
-            # wait_until="domcontentloaded" es más rápido que esperar toda la red.
-            await page.goto(url, timeout=30000, wait_until="domcontentloaded")
+            # 2. NAVEGACIÓN TÁCTICA
+            # wait_until="commit" es instantáneo apenas conecta. No esperamos JS.
+            await page.goto(url, timeout=40000, wait_until="commit")
             
-            # Esperamos un selector clave, pero solo 5 segundos
-            await page.wait_for_selector("h1", timeout=5000) 
+            # Simulamos comportamiento humano (Mouse)
+            # Esto dispara eventos que validan que no sos un robot
+            await page.wait_for_timeout(2000) # Espera 2 seg
+            await page.mouse.move(random.randint(100, 500), random.randint(100, 500))
+            await page.mouse.down()
+            await page.mouse.up()
+            
+            # Esperamos específicamente el PRECIO o TITULO, no toda la página
+            # Si aparece el precio, asumimos que cargó bien.
+            await page.wait_for_selector(".price-value", timeout=10000)
+
         except Exception as e:
-            print(f"⚠️ Alerta de carga (posible bloqueo o lentitud): {e}")
-            # Si falla la carga, cerramos y devolvemos lo que haya (o error)
+            print(f"⚠️ Alerta de carga: {e}")
+            # Hacemos un screenshot si falla para que veas qué pasó (opcional)
+            # await page.screenshot(path="error_debug.png")
             await browser.close()
             return data
 
-        # --- EXTRACCIÓN (Igual que antes, pero protegida) ---
+        # --- EXTRACCIÓN DE DATOS ---
         
         # 1️ TITULO
         try:
@@ -83,10 +98,10 @@ async def scrapear_zonaprop(url: str) -> dict:
 
         # 4️ DESCRIPCION
         try:
-            # Intentamos clickear ver más, pero con timeout corto
             ver_mas = page.locator("button:has-text('Ver más'), .show-more").first
             if await ver_mas.is_visible():
-                await ver_mas.click(timeout=2000, force=True)
+                await ver_mas.click(timeout=1000, force=True)
+                await page.wait_for_timeout(500)
             
             desc = page.locator("#reactDescription, .section-description").first
             texto = await desc.inner_text()
@@ -116,7 +131,7 @@ async def scrapear_zonaprop(url: str) -> dict:
             data["caracteristicas"] = features
         except: pass
 
-        # 6️ IMAGENES (Extracción por HTML crudo, es más rápido)
+        # 6️ IMAGENES (Extracción HTML)
         try:
             contenido_html = await page.content()
             patron = r'https://imgar\.zonapropcdn\.com/avisos/[^"\'>]*\.jpg'
@@ -127,10 +142,9 @@ async def scrapear_zonaprop(url: str) -> dict:
                 if link_hd not in fotos_finales:
                     fotos_finales.append(link_hd)
             data["imagenes"] = fotos_finales[:10]
-        except Exception as e:
-            print(f"Error imagenes: {e}")
+        except: pass
 
         await browser.close()
         
-    print("✅ Scraping finalizado con éxito")
+    print(f"✅ Scraping OK - Titulo: {data['titulo']}")
     return data
