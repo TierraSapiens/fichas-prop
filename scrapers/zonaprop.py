@@ -84,8 +84,8 @@ async def scrapear_zonaprop(url: str) -> dict:
                     vistas.add(f_hd)
                     fotos_unicas.append(f_hd)
 
-            # 3. Guardamos las primeras 12 fotos reales (evitando logos de inmobiliarias si los hubiera)
-            data["imagenes"] = fotos_unicas[:12]
+            # 3. Guardamos las primeras xx cantidad de fotos reales
+            data["imagenes"] = fotos_unicas[:5]
 
         except Exception as e:
             print(f"Error extrayendo datos: {e}")

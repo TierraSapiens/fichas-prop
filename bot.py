@@ -12,7 +12,7 @@ def start(update: Update, context: CallbackContext):
     user_name = update.message.from_user.first_name
     texto_bienvenida = (
         f"🏠 *¡Hola, {user_name}! Bienvenid@ a Ficha Prop.*\n\n"
-        "Soy tu asistente para generar tus fichas web Premium.\n\n"
+        "Soy tu asistente para generar tus fichas.\n\n"
         "📌 *¿Cómo empezar?*\n"
         "Simplemente enviame el **link** de Zonaprop."
     )
