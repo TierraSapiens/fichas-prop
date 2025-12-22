@@ -41,7 +41,7 @@ async def scrapear_zonaprop(url: str) -> dict:
         except Exception as e:
             print(f"Aviso de carga rápida: {e}")
 
-        # --- EXTRACCIÓN DE DATOS ---
+            # --- EXTRACCIÓN DE DATOS ---
             # Título
             selectors_titulo = ["h1", ".title-type", ".section-title h1", "h2.title"]
             for selector in selectors_titulo:
@@ -61,11 +61,11 @@ async def scrapear_zonaprop(url: str) -> dict:
 
             # Descripción
         try:
-            # 1. Expandir descripción (como hicimos antes)
-            boton_mas = page.locator("button:has-text('Leer descripción completa'), .show-more-button").first
-            if await boton_mas.is_visible():
-                await boton_mas.click()
-                await asyncio.sleep(0.5)
+            # Intentamos expandir la descripción si existe el botón
+            boton_leer_mas = page.locator("button:has-text('Leer descripción completa'), .show-more-button").first
+            if await boton_leer_mas.is_visible():
+              await boton_leer_mas.click()
+              await asyncio.sleep(0.5) # Breve pausa para que el texto aparezca
             
             desc_element = page.locator("#reactDescription, .section-description").first
             if await desc_element.count() > 0:
