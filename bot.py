@@ -34,7 +34,12 @@ def procesar_enlace(update: Update, context: CallbackContext):
         return update.message.reply_text("🤔 Eso no parece un link de Zonaprop. Intentá de nuevo.")
 
     # 2. INICIO DEL PROCESO
-    msg_estado = update.message.reply_text("⏳ *Generando tu ficha...*", parse_mode='Markdown')
+    user_name = update.message.from_user.first_name
+    msg_estado = update.message.reply_text(
+    f"⏳ *Generando tu ficha...*\n"
+    f"🚀 _{user_name}, aguardá unos instantes, estamos procesando los datos de forma económica._", 
+    parse_mode='Markdown'
+    )
 
     try:
         # Enviamos el link y el usuario a tu PC
