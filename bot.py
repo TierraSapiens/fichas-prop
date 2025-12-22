@@ -34,7 +34,7 @@ def procesar_enlace(update: Update, context: CallbackContext):
         return update.message.reply_text("🤔 Eso no parece un link de Zonaprop. Intentá de nuevo.")
 
     # 2. INICIO DEL PROCESO
-    msg_estado = update.message.reply_text("⏳ *Conectando con tu PC para generar la ficha...*", parse_mode='Markdown')
+    msg_estado = update.message.reply_text("⏳ *Generando tu ficha...*", parse_mode='Markdown')
 
     try:
         # Enviamos el link y el usuario a tu PC
@@ -51,16 +51,14 @@ def procesar_enlace(update: Update, context: CallbackContext):
 
         # 3. RESPUESTA
         if resultado.get('ok'):
-            # ¡ACÁ ESTABA EL CAMBIO CLAVE!
-            # Ya no armamos HTML acá. Recibimos la URL lista desde tu PC.
             link_final = resultado.get('url_web')
             titulo_prop = resultado.get('titulo', 'Propiedad')
 
             texto_final = (
-                f"✅ *¡Ficha Premium Generada!*\n\n"
+                f"✅ *¡Ficha Generada!*\n\n"
                 f"🏠 *{titulo_prop}*\n"
-                f"🔗 [ABRIR FICHA WEB]({link_final})\n\n"
-                f"_{link_final}_"
+                f"🔗 {link_final}\n\n"
+                f"⌛ _Nota: Si da error 404, aguardá 30 segundos a que GitHub termine de publicarla._"
             )
             msg_estado.edit_text(texto_final, parse_mode='Markdown')
         else:
