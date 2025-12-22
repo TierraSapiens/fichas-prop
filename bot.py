@@ -37,7 +37,7 @@ def procesar_enlace(update: Update, context: CallbackContext):
     user_name = update.message.from_user.first_name
     msg_estado = update.message.reply_text(
     f"⏳ *Generando tu ficha...*\n"
-    f"🚀 _{user_name}, aguardá unos instantes, estamos procesando los datos de forma económica._", 
+    f"🚀 _{user_name}, aguardá unos 4 minutos, estamos procesando los datos de forma económica._", 
     parse_mode='Markdown'
     )
 
