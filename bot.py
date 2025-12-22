@@ -62,7 +62,7 @@ def procesar_enlace(update: Update, context: CallbackContext):
                 f"✅ *¡Ficha Generada!*\n\n"
                 f"🏠 *{titulo_prop}*\n"
                 f"🔗 {link_final}\n\n"
-                f"⌛ _{user_name} si da error 404, aguardá 30 segundos porque estamos a modo economico._"
+                f"⌛ _{user_name} si da error 404, aguardá 40 segundos porque estamos a modo economico._"
             )
             msg_estado.edit_text(texto_final, parse_mode='Markdown')
         else:

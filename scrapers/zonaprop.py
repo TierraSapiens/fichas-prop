@@ -1,3 +1,6 @@
+#------------------
+# zonaprop.py V 1.2
+#-------------------
 import re
 import asyncio
 from playwright.async_api import async_playwright
@@ -64,14 +67,25 @@ async def scrapear_zonaprop(url: str) -> dict:
 
             # Imágenes (Extracción desde el código fuente para máxima velocidad)
             html_source = await page.content()
-            fotos = re.findall(r'https://imgar\.zonapropcdn\.com/avisos/[^"\'>]*\.jpg', html_source)
-            # Limpiamos, forzamos HD y quitamos duplicados
-            fotos_hd = []
-            for f in fotos:
-                f_clean = re.sub(r'/\d+x\d+/', '/960x720/', f)
-                if f_clean not in fotos_hd:
-                    fotos_hd.append(f_clean)
-            data["imagenes"] = fotos_hd[:12] # Limitamos a 12 para el carrusel
+            
+            # 1. Buscamos todas las URLs que coincidan con el patrón
+            fotos_encontradas = re.findall(r'https://imgar\.zonapropcdn\.com/avisos/[^"\'>]*\.jpg', html_source)
+            
+            # 2. Usamos un set para eliminar duplicados exactos de inmediato
+            fotos_unicas = []
+            vistas = set()
+
+            for f in fotos_encontradas:
+                # Forzamos la resolución HD
+                f_hd = re.sub(r'/\d+x\d+/', '/960x720/', f)
+                
+                # Solo la agregamos si no la vimos antes
+                if f_hd not in vistas:
+                    vistas.add(f_hd)
+                    fotos_unicas.append(f_hd)
+
+            # 3. Guardamos las primeras 12 fotos reales (evitando logos de inmobiliarias si los hubiera)
+            data["imagenes"] = fotos_unicas[:12]
 
         except Exception as e:
             print(f"Error extrayendo datos: {e}")
