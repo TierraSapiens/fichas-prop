@@ -1,5 +1,5 @@
 #------------------
-# zonaprop.py V 1.3 G 22/12/25 Muestra todo incluido descripcion completa pero sale el nombre inmobiliaria
+# zonaprop.py V 1.4 G 22/12/25
 #-------------------
 import re
 import asyncio
@@ -71,29 +71,28 @@ async def scrapear_zonaprop(url: str) -> dict:
             if await desc_element.count() > 0:
                 texto_sucio = await desc_element.inner_text()
                 
-                # 2. LISTA DE CORTE: Si aparece alguna de estas, cortamos el texto
-                frases_a_cortar = [
-                    "Aviso publicado por",
-                    "Comercializa Spano Propiedades",
-                    "Encontrá departamentos, casas, PH",
-                    "Seguinos en nuestras redes",
-                    "Asesoramiento personalizado para",
-                    "@spanopropiedades"
-                    "@"
-                    "NOTA"
-                    "Consultas"
-                ]
-                
+            # 2. CARGAR DICCIONARIO DESDE ARCHIVO
+                try:
+                    # Buscamos el archivo filtros.txt en la misma carpeta
+                    with open("filtros.txt", "r", encoding="utf-8") as f:
+                        frases_a_cortar = [line.strip() for line in f if line.strip()]
+                except FileNotFoundError:
+                    # Si el archivo no existe, usamos una lista básica para que no de error
+                    frases_a_cortar = ["Aviso publicado por"]
+
+                # 3. APLICAR CORTE (La "Guillotina" inteligente)
                 texto_limpio = texto_sucio
                 for frase in frases_a_cortar:
-                    if frase in texto_limpio:
-                        # Cortamos y nos quedamos solo con lo que está ANTES de la frase
-                        texto_limpio = texto_limpio.split(frase)[0]
+                    # Convertimos ambos a minúsculas para comparar, pero cortamos el original
+                    idx = texto_limpio.lower().find(frase.lower())
+                    if idx != -1:
+                        # Cortamos justo donde empieza la frase prohibida
+                        texto_limpio = texto_limpio[:idx]
                 
                 data["descripcion"] = texto_limpio.strip()
 
         except Exception as e:
-            print(f"Error limpiando descripción: {e}")
+            print(f"Error limpiando descripción: {e}")    
 
             # Imágenes
             html_source = await page.content()
