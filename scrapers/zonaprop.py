@@ -1,5 +1,5 @@
 #------------------
-# zonaprop.py V 1.3 G 22/12/25
+# zonaprop.py V 1.3 G 22/12/25 Muestra todo incluido descripcion completa pero sale el nombre inmobiliaria
 #-------------------
 import re
 import asyncio
@@ -42,7 +42,6 @@ async def scrapear_zonaprop(url: str) -> dict:
             print(f"Aviso de carga rápida: {e}")
 
         # --- EXTRACCIÓN DE DATOS ---
-        try:
             # Título
             selectors_titulo = ["h1", ".title-type", ".section-title h1", "h2.title"]
             for selector in selectors_titulo:
@@ -61,21 +60,42 @@ async def scrapear_zonaprop(url: str) -> dict:
             data["ubicacion"] = (await ubic.inner_text()).strip().replace("\n", " ") if await ubic.count() > 0 else "No encontrada"
 
             # Descripción
-            try:
-                # Intentamos expandir la descripción si existe el botón
-                boton_leer_mas = page.locator("button:has-text('Leer descripción completa'), .show-more-button").first
-                if await boton_leer_mas.is_visible():
-                    await boton_leer_mas.click()
-                    await asyncio.sleep(0.5) # Breve pausa para que el texto aparezca
+        try:
+            # 1. Expandir descripción (como hicimos antes)
+            boton_mas = page.locator("button:has-text('Leer descripción completa'), .show-more-button").first
+            if await boton_mas.is_visible():
+                await boton_mas.click()
+                await asyncio.sleep(0.5)
+            
+            desc_element = page.locator("#reactDescription, .section-description").first
+            if await desc_element.count() > 0:
+                texto_sucio = await desc_element.inner_text()
                 
-                desc = page.locator("#reactDescription, .section-description").first
-                if await desc.count() > 0:
-                    data["descripcion"] = (await desc.inner_text()).split("Aviso publicado por")[0].strip()
-            except Exception as e:
-                print(f"Aviso: No se pudo expandir la descripción (puede que ya esté abierta): {e}")
+                # 2. LISTA DE CORTE: Si aparece alguna de estas, cortamos el texto
+                frases_a_cortar = [
+                    "Aviso publicado por",
+                    "Comercializa Spano Propiedades",
+                    "Encontrá departamentos, casas, PH",
+                    "Seguinos en nuestras redes",
+                    "Asesoramiento personalizado para",
+                    "@spanopropiedades"
+                    "@"
+                    "NOTA"
+                    "Consultas"
+                ]
+                
+                texto_limpio = texto_sucio
+                for frase in frases_a_cortar:
+                    if frase in texto_limpio:
+                        # Cortamos y nos quedamos solo con lo que está ANTES de la frase
+                        texto_limpio = texto_limpio.split(frase)[0]
+                
+                data["descripcion"] = texto_limpio.strip()
+
+        except Exception as e:
+            print(f"Error limpiando descripción: {e}")
 
             # Imágenes
-            # --- IMÁGENES (LIMPIEZA Y HD) ---
             html_source = await page.content()
             fotos_encontradas = re.findall(r'https://imgar\.zonapropcdn\.com/avisos/[^"\'>]*\.jpg', html_source)
             
