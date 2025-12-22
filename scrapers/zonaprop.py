@@ -1,5 +1,5 @@
 #------------------
-# zonaprop.py V 1.2
+# zonaprop.py V 1.3 G 22/12/25
 #-------------------
 import re
 import asyncio
@@ -61,12 +61,38 @@ async def scrapear_zonaprop(url: str) -> dict:
             data["ubicacion"] = (await ubic.inner_text()).strip().replace("\n", " ") if await ubic.count() > 0 else "No encontrada"
 
             # Descripción
-            desc = page.locator("#reactDescription, .section-description").first
-            if await desc.count() > 0:
-                data["descripcion"] = (await desc.inner_text()).split("Aviso publicado por")[0].strip()
+            try:
+                # Intentamos expandir la descripción si existe el botón
+                boton_leer_mas = page.locator("button:has-text('Leer descripción completa'), .show-more-button").first
+                if await boton_leer_mas.is_visible():
+                    await boton_leer_mas.click()
+                    await asyncio.sleep(0.5) # Breve pausa para que el texto aparezca
+                
+                desc = page.locator("#reactDescription, .section-description").first
+                if await desc.count() > 0:
+                    data["descripcion"] = (await desc.inner_text()).split("Aviso publicado por")[0].strip()
+            except Exception as e:
+                print(f"Aviso: No se pudo expandir la descripción (puede que ya esté abierta): {e}")
 
-            # Imágenes (Extracción desde el código fuente para máxima velocidad)
+            # Imágenes
+            # --- IMÁGENES (LIMPIEZA Y HD) ---
             html_source = await page.content()
+            fotos_encontradas = re.findall(r'https://imgar\.zonapropcdn\.com/avisos/[^"\'>]*\.jpg', html_source)
+            
+            fotos_unicas = []
+            vistas = set()
+
+            for f in fotos_encontradas:
+                # Normalizamos TODAS las URLs a 960x720 antes de comparar
+                # Esto es clave: si no las normalizás, el set no detecta que son la misma foto
+                f_hd = re.sub(r'/\d+x\d+/', '/960x720/', f)
+                
+                if f_hd not in vistas:
+                    vistas.add(f_hd)
+                    fotos_unicas.append(f_hd)
+
+            # Guardamos solo 5 para que el carrusel sea rápido
+            data["imagenes"] = fotos_unicas[:5]
             
             # 1. Buscamos todas las URLs que coincidan con el patrón
             fotos_encontradas = re.findall(r'https://imgar\.zonapropcdn\.com/avisos/[^"\'>]*\.jpg', html_source)

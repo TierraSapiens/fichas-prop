@@ -14,7 +14,7 @@ def start(update: Update, context: CallbackContext):
         f"🏠 *¡Hola, {user_name}! Bienvenid@ a Ficha Prop.*\n\n"
         "Soy tu asistente para generar tus fichas.\n\n"
         "📌 *¿Cómo empezar?*\n"
-        "Simplemente enviame el **link** de Zonaprop."
+        "Simplemente enviame el **link**."
     )
     update.message.reply_text(texto_bienvenida, parse_mode='Markdown')
 
@@ -28,10 +28,10 @@ def procesar_enlace(update: Update, context: CallbackContext):
         return start(update, context)
     
     if "ayuda" in texto_usuario:
-        return update.message.reply_text("Pega un link de Zonaprop y yo te devuelvo la Ficha Web lista. 🚀")
+        return update.message.reply_text("Pega un link y yo te devuelvo la Ficha Web lista. 🚀")
 
     if not "zonaprop.com" in texto_usuario:
-        return update.message.reply_text("🤔 Eso no parece un link de Zonaprop. Intentá de nuevo.")
+        return update.message.reply_text("🤔 Eso no parece un link. Intentá de nuevo.")
 
     # 2. INICIO DEL PROCESO
     user_name = update.message.from_user.first_name
