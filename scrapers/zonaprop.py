@@ -1,6 +1,7 @@
-#------------------
-# zonaprop.py V 1.4 G 22/12/25
-#-------------------
+#---------------------
+# zonaprop.py V 1.4.1
+#---------------------
+import os
 import re
 import asyncio
 from playwright.async_api import async_playwright
@@ -28,7 +29,6 @@ async def scrapear_zonaprop(url: str) -> dict:
         page = await context.new_page()
 
         async def block_assets(route):
-            # Solo bloqueamos imágenes. Las fuentes y CSS los dejamos para que no se trabe.
             if route.request.resource_type == "image":
                 await route.abort()
             else:
@@ -41,7 +41,8 @@ async def scrapear_zonaprop(url: str) -> dict:
         except Exception as e:
             print(f"Aviso de carga rápida: {e}")
 
-            # --- EXTRACCIÓN DE DATOS ---
+        # EXTRACCION DE DATOS
+        try:
             # Título
             selectors_titulo = ["h1", ".title-type", ".section-title h1", "h2.title"]
             for selector in selectors_titulo:
@@ -55,46 +56,42 @@ async def scrapear_zonaprop(url: str) -> dict:
             precio = page.locator(".price-value span").first
             data["precio"] = (await precio.inner_text()).strip() if await precio.count() > 0 else "Consultar"
 
-            # Ubicación
+            # Ubicacion
             ubic = page.locator(".section-location-property").first
             data["ubicacion"] = (await ubic.inner_text()).strip().replace("\n", " ") if await ubic.count() > 0 else "No encontrada"
 
-            # Descripción
-        try:
-            # Intentamos expandir la descripción si existe el botón
+            # Descripcion
             boton_leer_mas = page.locator("button:has-text('Leer descripción completa'), .show-more-button").first
             if await boton_leer_mas.is_visible():
-              await boton_leer_mas.click()
-              await asyncio.sleep(0.5) # Breve pausa para que el texto aparezca
+                await boton_leer_mas.click()
+                await asyncio.sleep(0.5) 
             
             desc_element = page.locator("#reactDescription, .section-description").first
             if await desc_element.count() > 0:
                 texto_sucio = await desc_element.inner_text()
                 
-            # 2. CARGAR DICCIONARIO DESDE ARCHIVO
+                # Cargar diccionario (SOLO si hay descripcion)
                 try:
-                    # Buscamos el archivo filtros.txt en la misma carpeta
-                    with open("filtros.txt", "r", encoding="utf-8") as f:
+                    base_dir = os.path.dirname(os.path.abspath(__file__))
+                    ruta_filtros = os.path.join(base_dir, "filtros.txt")
+
+                    with open(ruta_filtros, "r", encoding="utf-8") as f:
                         frases_a_cortar = [line.strip() for line in f if line.strip()]
                 except FileNotFoundError:
-                    # Si el archivo no existe, usamos una lista básica para que no de error
+                    # Silencioso o print debug
                     frases_a_cortar = ["Aviso publicado por"]
 
-                # 3. APLICAR CORTE (La "Guillotina" inteligente)
+                # Aplicar corte
                 texto_limpio = texto_sucio
                 for frase in frases_a_cortar:
-                    # Convertimos ambos a minúsculas para comparar, pero cortamos el original
                     idx = texto_limpio.lower().find(frase.lower())
                     if idx != -1:
-                        # Cortamos justo donde empieza la frase prohibida
                         texto_limpio = texto_limpio[:idx]
-                
+
                 data["descripcion"] = texto_limpio.strip()
+            # --------------------------------------
 
-        except Exception as e:
-            print(f"Error limpiando descripción: {e}")    
-
-            # Imágenes
+            # Imagenes
             html_source = await page.content()
             fotos_encontradas = re.findall(r'https://imgar\.zonapropcdn\.com/avisos/[^"\'>]*\.jpg', html_source)
             
@@ -102,34 +99,11 @@ async def scrapear_zonaprop(url: str) -> dict:
             vistas = set()
 
             for f in fotos_encontradas:
-                # Normalizamos TODAS las URLs a 960x720 antes de comparar
-                # Esto es clave: si no las normalizás, el set no detecta que son la misma foto
                 f_hd = re.sub(r'/\d+x\d+/', '/960x720/', f)
-                
                 if f_hd not in vistas:
                     vistas.add(f_hd)
                     fotos_unicas.append(f_hd)
 
-            # Guardamos solo 5 para que el carrusel sea rápido
-            data["imagenes"] = fotos_unicas[:5]
-            
-            # 1. Buscamos todas las URLs que coincidan con el patrón
-            fotos_encontradas = re.findall(r'https://imgar\.zonapropcdn\.com/avisos/[^"\'>]*\.jpg', html_source)
-            
-            # 2. Usamos un set para eliminar duplicados exactos de inmediato
-            fotos_unicas = []
-            vistas = set()
-
-            for f in fotos_encontradas:
-                # Forzamos la resolución HD
-                f_hd = re.sub(r'/\d+x\d+/', '/960x720/', f)
-                
-                # Solo la agregamos si no la vimos antes
-                if f_hd not in vistas:
-                    vistas.add(f_hd)
-                    fotos_unicas.append(f_hd)
-
-            # 3. Guardamos las primeras xx cantidad de fotos reales
             data["imagenes"] = fotos_unicas[:5]
 
         except Exception as e:

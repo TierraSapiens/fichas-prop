@@ -1,5 +1,5 @@
 #---------------
-# bot.py V 1.7 - FINAL (Modo Pasamanos)
+# bot.py V 1.7
 #---------------
 import os
 import requests
