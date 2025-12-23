@@ -1,5 +1,5 @@
 #---------------------
-# zonaprop.py V 1.4.2
+# zonaprop.py V 1.4.4
 #---------------------
 import os
 import re
@@ -27,22 +27,16 @@ async def scrapear_zonaprop(url: str) -> dict:
         )
         page = await context.new_page()
 
-        #async def block_assets(route):
-        #    if route.request.resource_type == "image":
-        #        await route.abort()
-        #    else:
-        #        await route.continue_()
-
-        #await page.route("**/*", block_assets)
-
         try:
-            await page.goto(url, timeout=45000, wait_until="domcontentloaded")
+            # Usamos "commit" para velocidad, pero esperamos al H1 para asegurar contenido
+            await page.goto(url, timeout=45000, wait_until="commit")
+            await page.wait_for_selector("h1", timeout=10000)
         except Exception as e:
-            print(f"Aviso de carga rápida: {e}")
+            print(f"Aviso de carga: {e}")
 
-        # EXTRACCION DE DATOS
+        # --- EXTRACCIÓN DE DATOS TEXTUALES ---
         try:
-            # Titulo
+            # Título
             selectors_titulo = ["h1", ".title-type", ".section-title h1", "h2.title"]
             for selector in selectors_titulo:
                 h1 = page.locator(selector).first
@@ -53,13 +47,15 @@ async def scrapear_zonaprop(url: str) -> dict:
 
             # Precio
             precio = page.locator(".price-value span").first
-            data["precio"] = (await precio.inner_text()).strip() if await precio.count() > 0 else "Consultar"
+            if await precio.count() > 0:
+                data["precio"] = (await precio.inner_text()).strip()
 
-            # Ubicacion
+            # Ubicación
             ubic = page.locator(".section-location-property").first
-            data["ubicacion"] = (await ubic.inner_text()).strip().replace("\n", " ") if await ubic.count() > 0 else "No encontrada"
+            if await ubic.count() > 0:
+                data["ubicacion"] = (await ubic.inner_text()).strip().replace("\n", " ")
 
-            # Descripcion
+            # Descripción y Filtros
             boton_leer_mas = page.locator("button:has-text('Leer descripción completa'), .show-more-button").first
             if await boton_leer_mas.is_visible():
                 await boton_leer_mas.click()
@@ -69,17 +65,16 @@ async def scrapear_zonaprop(url: str) -> dict:
             if await desc_element.count() > 0:
                 texto_sucio = await desc_element.inner_text()
                 
-                # Cargar diccionario (SOLO si hay descripcion)
+                # Cargar diccionario de filtros
                 try:
                     base_dir = os.path.dirname(os.path.abspath(__file__))
                     ruta_filtros = os.path.join(base_dir, "filtros.txt")
-
                     with open(ruta_filtros, "r", encoding="utf-8") as f:
                         frases_a_cortar = [line.strip() for line in f if line.strip()]
                 except FileNotFoundError:
                     frases_a_cortar = ["Aviso publicado por"]
 
-                # Aplicar corte
+                # Aplicar guillotina de texto
                 texto_limpio = texto_sucio
                 for frase in frases_a_cortar:
                     idx = texto_limpio.lower().find(frase.lower())
@@ -88,38 +83,44 @@ async def scrapear_zonaprop(url: str) -> dict:
 
                 data["descripcion"] = texto_limpio.strip()
 
-            # Imagenes
-            # --- EXTRACCIÓN MEJORADA DE IMÁGENES ---
-            # 1. Intentamos obtener el contenedor específico de la galería primero
-            # Esto evita traer fotos repetidas de avisos similares al final de la página
-            galeria_html = await page.locator(".preview-gallery-module__grid-layout___Mqd-2, .re-cluster-container").inner_html()
-            if not galeria_html:
-                galeria_html = await page.content()
+        except Exception as e:
+            print(f"Error extrayendo textos: {e}")
 
-            # 2. Buscamos las URLs (incluyendo las de alta resolución que viste en el inspector)
-            fotos_encontradas = re.findall(r'https://imgar\.zonapropcdn\.com/avisos/[^"\'>]*\.jpg', galeria_html)
+        # --- EXTRACCIÓN DE IMÁGENES (ID ÚNICO) ---
+        try:
+            # Intentamos aislar la galería principal
+            galeria = page.locator(".preview-gallery-module__grid-layout___Mqd-2, .re-cluster-container").first
+            if await galeria.count() > 0:
+                html_fuente = await galeria.inner_html()
+            else:
+                html_fuente = await page.content()
+
+            urls_crudas = re.findall(r'https://imgar\.zonapropcdn\.com/avisos/[^"\'>]*\.jpg', html_fuente)
             
-            fotos_unicas = []
-            vistas = set()
+            fotos_limpias = []
+            ids_vistos = set()
 
-            for f in fotos_encontradas:
-                # Limpieza total: quitamos parámetros de redimensión y tokens de caché (?v=...)
-                # Esto es lo que hace que parezcan diferentes cuando son la misma
-                f_limpia = f.split('?')[0]
-                f_limpia = re.sub(r'/resize/\d+/\d+/\d+/\d+/\d+/', '/', f_limpia) # Limpia patrones de resize
-                f_hd = re.sub(r'/\d+x\d+/', '/960x720/', f_limpia) # Estandariza a HD
-                
-                if f_hd not in vistas:
-                    vistas.add(f_hd)
-                    fotos_unicas.append(f_hd)
+            for url in urls_crudas:
+                # Extraer el ID numérico antes del .jpg
+                match_id = re.search(r'/(\d+)\.jpg', url)
+                if match_id:
+                    foto_id = match_id.group(1)
+                    
+                    if foto_id not in ids_vistos:
+                        ids_vistos.add(foto_id)
+                        
+                        # Limpiar URL y forzar HD
+                        url_hd = url.split('?')[0]
+                        url_hd = re.sub(r'/resize/\d+/\d+/\d+/\d+/\d+/', '/', url_hd)
+                        url_hd = re.sub(r'/\d+x\d+/', '/960x720/', url_hd)
+                        
+                        fotos_limpias.append(url_hd)
 
-            # Ahora tendrás acceso a todas las fotos reales del aviso sin duplicados
-            data["imagenes"] = fotos_unicas[:12] # Subimos a 10 para aprovechar que hay más
+            data["imagenes"] = fotos_limpias[:5]
 
         except Exception as e:
-            print(f"Error crítico en módulo de imágenes: {e}")
-            data["imagenes"] = []
+            print(f"Error en módulo de imágenes: {e}")
 
         await browser.close()
-        print(">>> Scraping finalizado con éxito.")
+        print(f">>> Scraping finalizado. Fotos únicas: {len(data['imagenes'])}")
         return data
