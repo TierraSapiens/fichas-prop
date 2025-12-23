@@ -1,5 +1,5 @@
 #---------------------
-# zonaprop.py V 1.4.1
+# zonaprop.py V 1.4.2
 #---------------------
 import os
 import re
@@ -21,7 +21,6 @@ async def scrapear_zonaprop(url: str) -> dict:
     }
 
     async with async_playwright() as p:
-        # Lanzamos navegador
         browser = await p.chromium.launch(headless=True)
         context = await browser.new_context(
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
@@ -43,7 +42,7 @@ async def scrapear_zonaprop(url: str) -> dict:
 
         # EXTRACCION DE DATOS
         try:
-            # Título
+            # Titulo
             selectors_titulo = ["h1", ".title-type", ".section-title h1", "h2.title"]
             for selector in selectors_titulo:
                 h1 = page.locator(selector).first
@@ -78,7 +77,6 @@ async def scrapear_zonaprop(url: str) -> dict:
                     with open(ruta_filtros, "r", encoding="utf-8") as f:
                         frases_a_cortar = [line.strip() for line in f if line.strip()]
                 except FileNotFoundError:
-                    # Silencioso o print debug
                     frases_a_cortar = ["Aviso publicado por"]
 
                 # Aplicar corte
@@ -91,20 +89,50 @@ async def scrapear_zonaprop(url: str) -> dict:
                 data["descripcion"] = texto_limpio.strip()
             # --------------------------------------
 
-            # Imagenes
-            html_source = await page.content()
-            fotos_encontradas = re.findall(r'https://imgar\.zonapropcdn\.com/avisos/[^"\'>]*\.jpg', html_source)
-            
-            fotos_unicas = []
-            vistas = set()
+            # --- Imágenes (CORREGIDO Y ALINEADO) ---
+            try:
+                galeria_selector = "#pdp-gallery, .gallery-container, .react_pdp_gallery"
+                
+                # 1. Intento de espera controlada
+                try:
+                    await page.wait_for_selector(galeria_selector, timeout=5000)
+                except:
+                    print("Aviso: El contenedor de galería no apareció, usando fallback.")
+                    pass 
 
-            for f in fotos_encontradas:
-                f_hd = re.sub(r'/\d+x\d+/', '/960x720/', f)
-                if f_hd not in vistas:
-                    vistas.add(f_hd)
-                    fotos_unicas.append(f_hd)
+                # 2. Localizar el elemento
+                galeria_element = page.locator(galeria_selector).first
+                
+                # 3. Extraer HTML (o del contenedor o de toda la página)
+                if await galeria_element.count() > 0:
+                    html_fuente = await galeria_element.inner_html()
+                else:
+                    html_fuente = await page.content()
 
-            data["imagenes"] = fotos_unicas[:5]
+                # 4. Busqueda de URLs con Regex
+                fotos_encontradas = re.findall(r'https://imgar\.zonapropcdn\.com/avisos/[^"\'>]*\.jpg', html_fuente)
+                
+                fotos_unicas = []
+                vistas = set()
+
+                for f in fotos_encontradas:
+                    # Limpiamos y normalizamos
+                    f_limpia = re.sub(r'/\d+x\d+/', '/960x720/', f).split('?')[0]
+                    
+                    if f_limpia not in vistas:
+                        vistas.add(f_limpia)
+                        fotos_unicas.append(f_limpia)
+
+                # 5. Plan C: Si aún no hay fotos, buscamos en los scripts del fondo (JSON)
+                if not fotos_unicas:
+                    full_content = await page.content()
+                    fotos_unicas = list(dict.fromkeys(re.findall(r'https://imgar\.zonapropcdn\.com/avisos/\d+/[^"]+960x720\.jpg', full_content)))
+
+                data["imagenes"] = fotos_unicas[:8]
+
+            except Exception as e:
+                print(f"Error crítico en módulo de imágenes: {e}")
+                data["imagenes"] = []
 
         except Exception as e:
             print(f"Error extrayendo datos: {e}")
