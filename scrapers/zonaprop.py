@@ -86,40 +86,42 @@ async def scrapear_zonaprop(url: str) -> dict:
         except Exception as e:
             print(f"Error extrayendo textos: {e}")
 
-        # --- EXTRACCIÓN DE IMÁGENES (ID ÚNICO) ---
+        # --- EXTRACCIÓN DE IMÁGENES (LÓGICA DE BOLSA LLENA) ---
         try:
-            # Intentamos aislar la galería principal
-            galeria = page.locator(".preview-gallery-module__grid-layout___Mqd-2, .re-cluster-container").first
-            if await galeria.count() > 0:
-                html_fuente = await galeria.inner_html()
-            else:
-                html_fuente = await page.content()
-
+            # 1. Obtenemos todo el contenido para no perder ninguna
+            html_fuente = await page.content()
             urls_crudas = re.findall(r'https://imgar\.zonapropcdn\.com/avisos/[^"\'>]*\.jpg', html_fuente)
             
-            fotos_limpias = []
+            fotos_unicas_finales = []
             ids_vistos = set()
 
             for url in urls_crudas:
-                # Extraer el ID numérico antes del .jpg
                 match_id = re.search(r'/(\d+)\.jpg', url)
                 if match_id:
                     foto_id = match_id.group(1)
                     
+                    # SOLO si el ID es nuevo, lo procesamos
                     if foto_id not in ids_vistos:
                         ids_vistos.add(foto_id)
                         
-                        # Limpiar URL y forzar HD
-                        url_hd = url.split('?')[0]
-                        url_hd = re.sub(r'/resize/\d+/\d+/\d+/\d+/\d+/', '/', url_hd)
-                        url_hd = re.sub(r'/\d+x\d+/', '/960x720/', url_hd)
+                        # Limpiamos y forzamos HD
+                        url_limpia = url.split('?')[0]
+                        url_limpia = re.sub(r'/resize/\d+/\d+/\d+/\d+/\d+/', '/', url_limpia)
+                        # Reemplazamos cualquier tamaño (ej: 720x532) por 960x720
+                        url_hd = re.sub(r'/\d+x\d+/', '/960x720/', url_limpia)
                         
-                        fotos_limpias.append(url_hd)
+                        fotos_unicas_finales.append(url_hd)
+                
+                # Si ya conseguimos 10 fotos únicas, dejamos de buscar para ir más rápido
+                if len(fotos_unicas_finales) >= 10:
+                    break
 
-            data["imagenes"] = fotos_limpias[:5]
+            # Ahora sí, pasamos las fotos únicas (máximo 10) al diccionario
+            data["imagenes"] = fotos_unicas_finales
 
         except Exception as e:
-            print(f"Error en módulo de imágenes: {e}")
+            print(f"Error en limpieza de IDs: {e}")
+            data["imagenes"] = []
 
         await browser.close()
         print(f">>> Scraping finalizado. Fotos únicas: {len(data['imagenes'])}")
