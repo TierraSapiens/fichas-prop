@@ -128,7 +128,7 @@ async def scrapear_zonaprop(url: str) -> dict:
                     full_content = await page.content()
                     fotos_unicas = list(dict.fromkeys(re.findall(r'https://imgar\.zonapropcdn\.com/avisos/\d+/[^"]+960x720\.jpg', full_content)))
 
-                data["imagenes"] = fotos_unicas[:8]
+                data["imagenes"] = fotos_unicas[:12]
 
             except Exception as e:
                 print(f"Error crítico en módulo de imágenes: {e}")
