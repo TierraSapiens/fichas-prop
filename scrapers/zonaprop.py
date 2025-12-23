@@ -27,13 +27,13 @@ async def scrapear_zonaprop(url: str) -> dict:
         )
         page = await context.new_page()
 
-        async def block_assets(route):
-            if route.request.resource_type == "image":
-                await route.abort()
-            else:
-                await route.continue_()
+        #async def block_assets(route):
+        #    if route.request.resource_type == "image":
+        #        await route.abort()
+        #    else:
+        #        await route.continue_()
 
-        await page.route("**/*", block_assets)
+        #await page.route("**/*", block_assets)
 
         try:
             await page.goto(url, timeout=45000, wait_until="domcontentloaded")
