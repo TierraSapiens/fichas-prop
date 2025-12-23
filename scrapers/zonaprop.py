@@ -87,55 +87,38 @@ async def scrapear_zonaprop(url: str) -> dict:
                         texto_limpio = texto_limpio[:idx]
 
                 data["descripcion"] = texto_limpio.strip()
-            # --------------------------------------
 
-            # --- Imágenes (CORREGIDO Y ALINEADO) ---
-            try:
-                galeria_selector = "#pdp-gallery, .gallery-container, .react_pdp_gallery"
+            # Imagenes
+            # --- EXTRACCIÓN MEJORADA DE IMÁGENES ---
+            # 1. Intentamos obtener el contenedor específico de la galería primero
+            # Esto evita traer fotos repetidas de avisos similares al final de la página
+            galeria_html = await page.locator(".preview-gallery-module__grid-layout___Mqd-2, .re-cluster-container").inner_html()
+            if not galeria_html:
+                galeria_html = await page.content()
+
+            # 2. Buscamos las URLs (incluyendo las de alta resolución que viste en el inspector)
+            fotos_encontradas = re.findall(r'https://imgar\.zonapropcdn\.com/avisos/[^"\'>]*\.jpg', galeria_html)
+            
+            fotos_unicas = []
+            vistas = set()
+
+            for f in fotos_encontradas:
+                # Limpieza total: quitamos parámetros de redimensión y tokens de caché (?v=...)
+                # Esto es lo que hace que parezcan diferentes cuando son la misma
+                f_limpia = f.split('?')[0]
+                f_limpia = re.sub(r'/resize/\d+/\d+/\d+/\d+/\d+/', '/', f_limpia) # Limpia patrones de resize
+                f_hd = re.sub(r'/\d+x\d+/', '/960x720/', f_limpia) # Estandariza a HD
                 
-                # 1. Intento de espera controlada
-                try:
-                    await page.wait_for_selector(galeria_selector, timeout=5000)
-                except:
-                    print("Aviso: El contenedor de galería no apareció, usando fallback.")
-                    pass 
+                if f_hd not in vistas:
+                    vistas.add(f_hd)
+                    fotos_unicas.append(f_hd)
 
-                # 2. Localizar el elemento
-                galeria_element = page.locator(galeria_selector).first
-                
-                # 3. Extraer HTML (o del contenedor o de toda la página)
-                if await galeria_element.count() > 0:
-                    html_fuente = await galeria_element.inner_html()
-                else:
-                    html_fuente = await page.content()
-
-                # 4. Busqueda de URLs con Regex
-                fotos_encontradas = re.findall(r'https://imgar\.zonapropcdn\.com/avisos/[^"\'>]*\.jpg', html_fuente)
-                
-                fotos_unicas = []
-                vistas = set()
-
-                for f in fotos_encontradas:
-                    # Limpiamos y normalizamos
-                    f_limpia = re.sub(r'/\d+x\d+/', '/960x720/', f).split('?')[0]
-                    
-                    if f_limpia not in vistas:
-                        vistas.add(f_limpia)
-                        fotos_unicas.append(f_limpia)
-
-                # 5. Plan C: Si aún no hay fotos, buscamos en los scripts del fondo (JSON)
-                if not fotos_unicas:
-                    full_content = await page.content()
-                    fotos_unicas = list(dict.fromkeys(re.findall(r'https://imgar\.zonapropcdn\.com/avisos/\d+/[^"]+960x720\.jpg', full_content)))
-
-                data["imagenes"] = fotos_unicas[:12]
-
-            except Exception as e:
-                print(f"Error crítico en módulo de imágenes: {e}")
-                data["imagenes"] = []
+            # Ahora tendrás acceso a todas las fotos reales del aviso sin duplicados
+            data["imagenes"] = fotos_unicas[:12] # Subimos a 10 para aprovechar que hay más
 
         except Exception as e:
-            print(f"Error extrayendo datos: {e}")
+            print(f"Error crítico en módulo de imágenes: {e}")
+            data["imagenes"] = []
 
         await browser.close()
         print(">>> Scraping finalizado con éxito.")
